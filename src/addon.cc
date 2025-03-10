@@ -392,7 +392,6 @@ Napi::Value Statement::Run(const Napi::CallbackInfo& info) {
   int total_changes_before = sqlite3_total_changes(stmt->db_->handle());
 
   int r = sqlite3_step(stmt->handle_);
-  sqlite3_stmt_status(stmt->handle_, SQLITE_STMTSTATUS_REPREPARE, 1);
   stmt->Reset();
   if (r != SQLITE_DONE && r != SQLITE_ROW) {
     return stmt->db_->ThrowSqliteError(env, r);
