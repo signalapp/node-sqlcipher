@@ -53,23 +53,16 @@ jobs:
       - name: Install node_modules
         run: pnpm install --frozen-lockfile
 
-      - run: |
-          rustup toolchain install $(cat rust-toolchain) \
-            --profile minimal --target ${{ matrix.rust-cross-target }}
+      - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target ${{ matrix.rust-cross-target }}
 
       - name: Install dump_syms
         run: cargo install dump_syms --no-default-features --features cli
 
       - name: Prebuild ${{ matrix.target }}
         run: |
-          pnpm prebuildify \
-            --target '${{ steps.get-nvm-version.outputs.node-version }}' \
-            --arch ${{ matrix.target }}
+          pnpm prebuildify --target '${{ steps.get-nvm-version.outputs.node-version }}' --arch ${{ matrix.target }}
       - name: Prebuild ${{ matrix.cross-target }}
-        run: |
-          pnpm prebuildify \
-            --target '${{ steps.get-nvm-version.outputs.node-version }}' \
-            --arch ${{ matrix.cross-target }}
+        run: pnpm prebuildify --target '${{ steps.get-nvm-version.outputs.node-version }}' --arch ${{ matrix.cross-target }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
