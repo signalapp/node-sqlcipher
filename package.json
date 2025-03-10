@@ -53,7 +53,8 @@
     "format:js": "prettier --cache --write .",
     "lint": "run-p --print-label check:eslint check:format",
     "check:eslint": "eslint --cache .",
-    "check:format": "prettier --cache --check ."
+    "check:format": "prettier --cache --check .",
+    "prepare": "run-s build"
   },
   "keywords": [
     "sqlite",
