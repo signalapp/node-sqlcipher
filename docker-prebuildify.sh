@@ -30,6 +30,6 @@ docker run ${IS_TTY:+ -it} --init --rm -v "${PWD}":/home/sqlcipher/src ${DOCKER_
         CXX=aarch64-linux-gnu-g++ \
         CPATH=/usr/aarch64-linux-gnu/include \
         PREBUILD_STRIP_BIN=aarch64-linux-gnu-strip \
-        pnpm prebuildify -t $(cat ./.nvmrc) --arch arm64 &&
-    pnpm prebuildify -t $(cat ./.nvmrc) --arch x64
+        pnpm prebuildify --target $(cat ./.nvmrc) --arch arm64 &&
+    pnpm prebuildify --target $(cat ./.nvmrc) --arch x64
 '
