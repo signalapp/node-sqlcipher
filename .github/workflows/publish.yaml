@@ -134,7 +134,7 @@ jobs:
             --no-git-checks \
             ${{ inputs.dry_run && '--dry-run' || ''}}
         env:
-          "npm_config_//registry.npmjs.org/:_authToken": ${{ secrets.NPM_TOKEN }}
+          'npm_config_//registry.npmjs.org/:_authToken': ${{ secrets.NPM_TOKEN }}
 
       - name: Rename symbols
         run: |
