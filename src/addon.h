@@ -75,6 +75,10 @@ class Statement {
     sqlite3_clear_bindings(handle_);
   }
 
+  // Check if the remainder of the SQL query string has any additional
+  // statements.
+  //
+  // If return value `false` - only whitespace and comments remain.
   static inline bool HasTail(const char* tail) {
     for (; *tail != 0; tail++) {
       switch (*tail) {
@@ -154,9 +158,19 @@ class Statement {
 
   Database* db_;
   sqlite3_stmt* handle_;
+
+  // If `true` - `Step()` uses provided cache array and returns raw column names
+  // and values instead of constructing JS objects in C++.
   bool is_persistent_;
+
+  // If `true` - `Step()` returns the first column value instead of full row.
   bool is_pluck_;
+
+  // If `true` - `Step()` returns BigInt instance for all INTEGER column values
   bool is_bigint_;
+
+  // Iterator into the Database's `statements_` `std::list`. Used for untracking
+  // the statement.
   std::list<Statement*>::const_iterator db_iter_;
 
   friend class Database;
