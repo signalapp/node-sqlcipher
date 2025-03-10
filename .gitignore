@@ -1,0 +1,8 @@
+build/
+dist/
+node_modules/
+coverage/
+prebuilds/
+.tmp/
+.eslintcache
+todo.md

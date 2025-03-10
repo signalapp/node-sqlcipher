@@ -1,0 +1,68 @@
+# Copyright 2025 Signal Messenger, LLC
+# SPDX-License-Identifier: AGPL-3.0-only
+
+name: Prebuild
+on: [workflow_dispatch]
+
+jobs:
+  prebuild:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+        include:
+          - os: macos-latest
+            target: arm64
+            cross-target: x64
+            rust-cross-target: x86_64-apple-darwin
+          - os: windows-latest
+            target: x64
+            cross-target: arm64
+            rust-cross-target: aarch64-pc-windows-msvc
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.3.0
+      - name: Setup node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Install node_modules
+        run: pnpm install --frozen-lockfile
+
+      - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target ${{ matrix.rust-cross-target }}
+
+      - name: Install dump_syms
+        run: cargo install dump_syms --no-default-features --features cli
+
+      - name: Prebuild ${{ matrix.target }}
+        run: pnpm prebuildify --arch ${{ matrix.target }}
+      - name: Prebuild ${{ matrix.cross-target }}
+        run: pnpm prebuildify --arch ${{ matrix.cross-target }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlcipher-${{matrix.os}}
+          path: prebuilds/*
+
+  prebuild_linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build in docker container
+        run: ./docker-prebuildify.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlcipher-linux-latest
+          path: prebuilds/*

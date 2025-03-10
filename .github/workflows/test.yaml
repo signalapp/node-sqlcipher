@@ -1,0 +1,70 @@
+# Copyright 2025 Signal Messenger, LLC
+# SPDX-License-Identifier: AGPL-3.0-only
+
+name: Test
+on: [push, pull_request]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: macos-latest
+            cc: clang
+            cxx: clang++
+          - os: ubuntu-latest
+            cc: gcc
+            cxx: g++
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.3.0
+      - name: Setup node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.7
+      - name: Restore sccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.SCCACHE_PATH }}
+          key: sccache-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'patches/**', 'deps/extension/Cargo.lock') }}
+
+      - name: Restore cargo cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: cargo-${{ runner.os }}-${{ hashFiles('deps/extension/Cargo.lock') }}
+
+      - name: Install node_modules (unixes)
+        if: ${{ matrix.os == 'macos-latest' || matrix.os == 'ubuntu-latest' }}
+        run: pnpm install
+        env:
+          CC: sccache ${{ matrix.cc }}
+          CXX: sccache ${{ matrix.cxx }}
+          RUSTC_WRAPPER: sccache
+          SCCACHE_GHA_ENABLED: 'true'
+
+      - name: Install node_modules (windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: pnpm install
+        env:
+          RUSTC_WRAPPER: sccache
+
+      - name: Run lint
+        if: matrix.os != 'windows-latest'
+        run: pnpm lint
+
+      - name: Run tests
+        run: pnpm test

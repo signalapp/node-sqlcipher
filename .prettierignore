@@ -1,0 +1,5 @@
+build/
+deps/sqlcipher/*
+dist/
+deps/extension/target
+pnpm-lock.yaml

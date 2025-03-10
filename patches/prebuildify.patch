@@ -1,0 +1,82 @@
+diff --git a/index.js b/index.js
+index 7729aaf873cef95e613f356d37cf55909e8b5a6d..9c248ebad8bd3c5ef07c5080da28072fb02b753c 100644
+--- a/index.js
++++ b/index.js
+@@ -157,7 +157,7 @@ function copySharedLibs (builds, folder, opts, cb) {
+     if (err) return cb()
+ 
+     var libs = files.filter(function (name) {
+-      return /\.dylib$/.test(name) || /\.so(\.\d+)?$/.test(name) || /\.dll$/.test(name)
++      return /\.dylib$/.test(name) || /\.so(\.\d+)?$/.test(name) || /\.dll$/.test(name) || /\.sym$/.test(name)
+     })
+ 
+     loop()
+@@ -167,9 +167,17 @@ function copySharedLibs (builds, folder, opts, cb) {
+       var next = libs.shift()
+       if (!next) return cb()
+ 
+-      strip(path.join(builds, next), opts, function (err) {
+-        if (err) return cb(err)
++      if (/\.sym$/.test(next)) {
+         copy(path.join(builds, next), path.join(folder, next), loop)
++        return
++      }
++
++      dumpSymbols(path.join(builds, next), opts, function (err) {
++        if (err) return cb(err)
++        strip(path.join(builds, next), opts, function (err) {
++          if (err) return cb(err)
++          copy(path.join(builds, next), path.join(folder, next), loop)
++        })
+       })
+     }
+   })
+@@ -241,9 +249,13 @@ function build (target, runtime, opts, cb) {
+       findBuild(opts.output, function (err, output) {
+         if (err) return cb(err)
+ 
+-        strip(output, opts, function (err) {
++        dumpSymbols(output, opts, function (err) {
+           if (err) return cb(err)
+-          cb(null, output)
++
++          strip(output, opts, function (err) {
++            if (err) return cb(err)
++            cb(null, output)
++          })
+         })
+       })
+     })
+@@ -263,11 +275,31 @@ function findBuild (dir, cb) {
+   })
+ }
+ 
++function dumpSymbols (file, opts, cb) {
++  var platform = os.platform()
++  if (!opts.strip) return cb()
++
++  var extensionRe = /\.(dylib|so|dll|node)$/
++  var input = platform === 'win32' ? file.replace(extensionRe, '.pdb') : file
++  var output = file.replace(extensionRe, '.sym')
++  var child = proc.spawn('dump_syms', [input, '-o', output], {
++    stdio: 'ignore',
++    shell: opts.shell,
++    windowsHide: true
++  })
++
++  child.on('exit', function (code) {
++    if (code) return cb(spawnError('dymp_syms', code))
++    cb()
++  })
++}
++
+ function strip (file, opts, cb) {
+   var platform = os.platform()
+   if (!opts.strip || (platform !== 'darwin' && platform !== 'linux')) return cb()
+ 
+-  var args = platform === 'darwin' ? [file, '-Sx'] : [file, '--strip-all']
++  var args = platform === 'darwin' ?
++    [file, '-Sx'] : [file, '--strip-all']
+   var child = proc.spawn(opts.stripBin, args, {
+     stdio: 'ignore',
+     shell: opts.shell,

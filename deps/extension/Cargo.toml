@@ -1,0 +1,37 @@
+#
+# Copyright (C) 2024 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+[package]
+name = "signal-sqlcipher-extension"
+version = "0.2.1"
+edition = "2021"
+license = "AGPL-3.0-only"
+
+[lib]
+crate-type = ["staticlib"]
+
+[profile.release]
+lto = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+aes = "0.8.4"
+cbc = "0.1.2"
+hmac = "0.12.1"
+pbkdf2 = "0.12.2"
+rand_core = { version = "0.6.4", "default-features" = false, features = ["getrandom"] }
+sha2 = { version = "0.10.8", "default-features" = false }
+signal-tokenizer = { git = "https://github.com/signalapp/Signal-FTS5-Extension" }
+
+[build-dependencies]
+cbindgen = "0.27.0"
+
+[target.'cfg(not(any(windows, target_arch = "x86")))'.dependencies]
+# sha2's asm implementation uses standalone .S files that aren't compiled correctly on Windows,
+# and aren't linked correctly on x86 Android.
+# This will be fixed in sha2 0.11, which also removes the "asm" feature and turns it on by default.
+# So when sha2 0.11 is released, this section will go away.
+sha2 = { version = "0.10.8", "default-features" = false, features = ["asm"] }

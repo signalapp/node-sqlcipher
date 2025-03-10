@@ -1,0 +1,20 @@
+{
+  "name": "bench",
+  "version": "1.0.0",
+  "private": "true",
+  "type": "module",
+  "scripts": {
+    "bench": "vitest bench"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@signalapp/better-sqlite3": "^9.0.13",
+    "vitest": "^3.0.8"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@signalapp/better-sqlite3",
+      "esbuild"
+    ]
+  }
+}
