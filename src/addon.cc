@@ -431,8 +431,6 @@ Napi::Value Statement::Step(const Napi::CallbackInfo& info) {
   }
 
   int r = sqlite3_step(stmt->handle_);
-  auto recompiled =
-      sqlite3_stmt_status(stmt->handle_, SQLITE_STMTSTATUS_REPREPARE, 1);
 
   if (r == SQLITE_DONE) {
     stmt->Reset();
@@ -464,6 +462,12 @@ Napi::Value Statement::Step(const Napi::CallbackInfo& info) {
     }
     return result;
   }
+
+  // Track when the statement gets recompiled due to a schema change. When it
+  // happens - we need to invalidate the cached JS wrapper function that
+  // translates an array of column names and values into a JS object.
+  auto recompiled =
+      sqlite3_stmt_status(stmt->handle_, SQLITE_STMTSTATUS_REPREPARE, 1);
 
   Napi::Array result;
   if (recompiled || cache.IsUndefined()) {
