@@ -321,8 +321,7 @@ Napi::Value Statement::New(const Napi::CallbackInfo& info) {
                              is_persistent ? SQLITE_PREPARE_PERSISTENT : 0,
                              &handle, &tail);
   if (r != SQLITE_OK) {
-    db->ThrowSqliteError(env, r);
-    return Napi::Value();
+    return db->ThrowSqliteError(env, r);
   }
 
   // Verify no further statements
@@ -332,9 +331,8 @@ Napi::Value Statement::New(const Napi::CallbackInfo& info) {
       NAPI_THROW(Napi::Error::New(env, "Can't prepare more than one statement"),
                  Napi::Value());
     } else {
-      db->ThrowSqliteError(env, r);
+      return db->ThrowSqliteError(env, r);
     }
-    return Napi::Value();
   }
 
   auto stmt = new Statement(db, db_external, handle, is_persistent, is_pluck,
