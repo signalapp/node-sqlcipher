@@ -159,6 +159,7 @@ Napi::Value Database::Close(const Napi::CallbackInfo& info) {
     return Napi::Value();
   }
 
+  // Close all active statements (otherwise `sqlite3_close()` is going to error)
   for (const auto& stmt : db->statements_) {
     int r = sqlite3_finalize(stmt->handle_);
     if (r != SQLITE_OK) {
@@ -432,6 +433,7 @@ Napi::Value Statement::Step(const Napi::CallbackInfo& info) {
 
   int r = sqlite3_step(stmt->handle_);
 
+  // No more rows
   if (r == SQLITE_DONE) {
     stmt->Reset();
     return Napi::Value();
@@ -444,6 +446,7 @@ Napi::Value Statement::Step(const Napi::CallbackInfo& info) {
 
   int column_count = sqlite3_column_count(stmt->handle_);
 
+  // In pluck mode - return the value of the first column
   if (stmt->is_pluck_) {
     if (column_count != 1) {
       NAPI_THROW(Napi::Error::New(env, "Invalid column count for pluck"),
@@ -454,6 +457,8 @@ Napi::Value Statement::Step(const Napi::CallbackInfo& info) {
     return result;
   }
 
+  // In non-persistent mode - construct the JS object with column names as keys
+  // and row values as values.
   if (!stmt->is_persistent_) {
     auto result = Napi::Object::New(env);
     for (int i = 0; i < column_count; i++) {
@@ -492,7 +497,9 @@ bool Statement::BindParams(Napi::Env env, Napi::Value params) {
   int key_count = sqlite3_bind_parameter_count(handle_);
 
   if (params.IsNull()) {
-    // .all() only binds the first params
+    // `.all()` executes `Step()` multiple times, but only binds `params` once.
+    // Passing `null` allows to keep bound params as is until the last `Step()`
+    // where they will get reset.
   } else if (params.IsUndefined()) {
     if (key_count == 0) {
       return true;
