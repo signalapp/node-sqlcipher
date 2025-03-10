@@ -13,6 +13,6 @@ cd -
 
 ## License
 
-Copyright 2024 Signal Messenger, LLC.
+Copyright 2025 Signal Messenger, LLC.
 
 Licensed under the AGPLv3: http://www.gnu.org/licenses/agpl-3.0.html
