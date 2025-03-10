@@ -3,6 +3,7 @@ dist/
 node_modules/
 coverage/
 prebuilds/
+docs/
 .tmp/
 .eslintcache
 todo.md

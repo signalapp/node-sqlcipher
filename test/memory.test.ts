@@ -381,3 +381,59 @@ test('invalid argument for signalTokenize', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   expect(() => db.signalTokenize(123 as any)).toThrowError('Invalid value');
 });
+
+test('does not cache statements', () => {
+  expect(db.prepare('SELECT 1')).not.toBe(db.prepare('SELECT 1'));
+});
+
+describe('statement cache', () => {
+  let cachedDb: Database;
+  beforeEach(() => {
+    cachedDb = new Database(':memory:', { cacheStatements: true });
+
+    cachedDb.exec(`
+      CREATE TABLE t (a INTEGER, b TEXT, c BLOB);
+
+      INSERT INTO t (a, b, c) VALUES
+        (1, '123', x'abba'),
+        (2, '456', x'dada'),
+        (3, '789', NULL);
+    `);
+  });
+
+  afterEach(() => {
+    cachedDb.close();
+  });
+
+  test('caches statements', () => {
+    expect(cachedDb.prepare('SELECT 1')).toBe(cachedDb.prepare('SELECT 1'));
+  });
+
+  test('uses query in cache key', () => {
+    expect(cachedDb.prepare('SELECT 1')).not.toBe(cachedDb.prepare('SELECT 2'));
+  });
+
+  test('uses pluck in cache key', () => {
+    expect(cachedDb.prepare('SELECT 1')).not.toBe(
+      cachedDb.prepare('SELECT 1', { pluck: true }),
+    );
+  });
+
+  test('uses bigint in cache key', () => {
+    expect(cachedDb.prepare('SELECT 1')).not.toBe(
+      cachedDb.prepare('SELECT 1', { bigint: true }),
+    );
+  });
+
+  test('invalidates cache on close', () => {
+    const stmt = cachedDb.prepare('SELECT 1');
+    stmt.close();
+    expect(stmt).not.toBe(cachedDb.prepare('SELECT 1'));
+  });
+
+  test('does not cache persistent=false statements', () => {
+    expect(cachedDb.prepare('SELECT 1', { persistent: false })).not.toBe(
+      cachedDb.prepare('SELECT 1', { persistent: false }),
+    );
+  });
+});

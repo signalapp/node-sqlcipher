@@ -19,13 +19,13 @@ const BLOB = Buffer.alloc(16 * 1024);
 const DELETE = 'DELETE FROM t';
 
 describe('INSERT INTO t', () => {
-  const sdb = new Database(':memory:');
+  const sdb = new Database(':memory:', { cacheStatements: true });
   const bdb = new BDatabase(':memory:');
 
   sdb.exec(PREPARE);
   bdb.exec(PREPARE);
 
-  const sinsert = sdb.prepare(INSERT, { persistent: true });
+  const sinsert = sdb.prepare(INSERT);
   const binsert = bdb.prepare(INSERT);
 
   bench(

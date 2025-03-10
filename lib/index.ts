@@ -58,9 +58,13 @@ export type RunResult = {
 export type StatementOptions = Readonly<{
   /**
    * If `true` - the statement is assumed to be long-lived and some otherwise
-   * costly optimizations might be enabled.
+   * costly optimizations are enabled.
+   *
+   * The default value is controlled by DatabaseOptions.
+   *
+   * @see {@link DatabaseOptions}
    */
-  persistent?: true;
+  persistent?: boolean;
 
   /**
    * If `true` - `.get()` returns a single column and `.all()` returns a list
@@ -112,12 +116,14 @@ class Statement<Options extends StatementOptions = object> {
   #cache: Array<SqliteValue<Options>> | undefined;
   #createRow: undefined | ((result: unknown) => RowType<Options>);
   #native: NativeStatement | undefined;
+  #onClose: (() => void) | undefined;
 
   /** @internal */
   constructor(
     db: NativeDatabase,
     query: string,
     { persistent, pluck, bigint }: Options,
+    onClose?: () => void,
   ) {
     this.#needsTranslation = persistent === true && !pluck;
 
@@ -128,6 +134,8 @@ class Statement<Options extends StatementOptions = object> {
       pluck === true,
       bigint === true,
     );
+
+    this.#onClose = onClose;
   }
 
   /**
@@ -222,6 +230,7 @@ class Statement<Options extends StatementOptions = object> {
     }
     addon.statementClose(this.#native);
     this.#native = undefined;
+    this.#onClose?.();
   }
 
   /** @internal */
@@ -292,12 +301,25 @@ export type PragmaResult<Options extends PragmaOptions> = Options extends {
 /** @internal */
 type TransactionStatement = Statement<{ persistent: true; pluck: true }>;
 
+export type DatabaseOptions = Readonly<{
+  /**
+   * If `true` - all statements are persistent by default (unless
+   * `persistent` is set to `false` in `StatementOptions`, and persistent
+   * statements are automatically cached and reused until closed.
+   *
+   * @see {@link StatementOptions}
+   */
+  cacheStatements?: boolean;
+}>;
+
 /**
  * A sqlite database class.
  */
 export default class Database {
   #native: NativeDatabase | undefined;
   #transactionDepth = 0;
+  #isCacheEnabled: boolean;
+  #statementCache = new Map<string, Statement>();
 
   #transactionStmts:
     | Readonly<{
@@ -317,11 +339,12 @@ export default class Database {
    * @param path - The path to the database file or ':memory:'/'' for opening
    *               the in-memory database.
    */
-  constructor(path = ':memory:') {
+  constructor(path = ':memory:', { cacheStatements }: DatabaseOptions = {}) {
     if (typeof path !== 'string') {
       throw new TypeError('Invalid database path');
     }
     this.#native = addon.databaseOpen(path);
+    this.#isCacheEnabled = cacheStatements === true;
   }
 
   /**
@@ -371,7 +394,30 @@ export default class Database {
     if (typeof query !== 'string') {
       throw new TypeError('Invalid query argument');
     }
-    return new Statement(this.#native, query, options);
+
+    if (!this.#isCacheEnabled || options.persistent === false) {
+      return new Statement(this.#native, query, options);
+    }
+
+    // Persistent statements are cached until closed.
+    const cacheKey = `${options.pluck}:${options.bigint}:${query}`;
+    const cached = this.#statementCache.get(cacheKey);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    const stmt = new Statement(
+      this.#native,
+      query,
+      {
+        persistent: true,
+        pluck: options.pluck,
+        bigint: options.bigint,
+      } as Options,
+      () => this.#statementCache.delete(cacheKey),
+    );
+    this.#statementCache.set(cacheKey, stmt);
+    return stmt;
   }
 
   /**

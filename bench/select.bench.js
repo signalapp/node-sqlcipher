@@ -34,7 +34,7 @@ for (let i = 0; i < 100; i += 1) {
 const SELECT = 'SELECT * FROM t LIMIT 1000';
 
 describe('SELECT * FROM t', () => {
-  const sdb = new Database(':memory:');
+  const sdb = new Database(':memory:', { cacheStatements: true });
   const bdb = new BDatabase(':memory:');
 
   sdb.exec(PREPARE);
@@ -55,7 +55,7 @@ describe('SELECT * FROM t', () => {
     }
   })();
 
-  const sselect = sdb.prepare(SELECT, { persistent: true });
+  const sselect = sdb.prepare(SELECT);
   const bselect = bdb.prepare(SELECT);
 
   bench('@signalapp/sqlcipher', () => {
