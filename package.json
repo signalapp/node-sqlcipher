@@ -24,16 +24,9 @@
     "dist/index.cjs",
     "dist/index.mjs",
     "dist/lib/index.d.ts",
-    "src/*.cc",
-    "src/*.h",
-    "deps/**",
-    "!deps/sqlcipher/update.sh",
-    "!deps/.tmp/**",
-    "!deps/extension/target/**",
     "prebuilds",
     "!prebuilds/**/*.sym",
-    "README.md",
-    "binding.gyp"
+    "README.md"
   ],
   "dependencies": {
     "node-addon-api": "*",
