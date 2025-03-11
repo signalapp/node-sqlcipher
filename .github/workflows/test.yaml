@@ -21,7 +21,8 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Setup pnpm
         uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
         with:
@@ -65,6 +66,14 @@ jobs:
       - name: Run lint
         if: matrix.os != 'windows-latest'
         run: pnpm lint
+
+      - name: Run format
+        if: matrix.os != 'windows-latest'
+        run: pnpm run format
+
+      - name: Verify no formatting changes
+        if: matrix.os != 'windows-latest'
+        run: git diff --exit-code
 
       - name: Run tests
         run: pnpm test
