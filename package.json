@@ -34,7 +34,8 @@
   },
   "scripts": {
     "watch": "tsc --watch",
-    "build": "run-p --print-label build:esm build:cjs",
+    "build": "run-p --print-label build:ts build:esm build:cjs",
+    "build:ts": "tsc",
     "build:esm": "esbuild --target=node20 --define:__dirname=undefined lib/index.ts --outfile=dist/index.mjs",
     "build:cjs": "esbuild --target=node20 --define:import.meta.url=undefined lib/index.ts --format=cjs --outfile=dist/index.cjs",
     "build:docs": "typedoc lib/index.ts --includeVersion",
