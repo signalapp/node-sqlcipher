@@ -128,13 +128,9 @@ jobs:
         env:
           PREBUILDS_ONLY: 1
 
-      - run: |
-          pnpm publish --tag '${{ github.event.inputs.npm_tag }}' \
-            --access public \
-            --no-git-checks \
-            ${{ inputs.dry_run && '--dry-run' || ''}}
+      - run: npm publish --tag '${{ github.event.inputs.npm_tag }}' --access public ${{ inputs.dry_run && '--dry-run' || ''}}
         env:
-          'npm_config_//registry.npmjs.org/:_authToken': ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Rename symbols
         run: |
