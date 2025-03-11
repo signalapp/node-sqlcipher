@@ -172,6 +172,9 @@ class Statement<Options extends StatementOptions = object> {
     }
     this.#checkParams(params);
     const result = addon.statementStep(this.#native, params, this.#cache, true);
+    if (result === undefined) {
+      return undefined;
+    }
     if (!this.#needsTranslation) {
       return result as unknown as Row | undefined;
     }

@@ -106,6 +106,13 @@ test('statement.get persistent=true', () => {
   );
 });
 
+test('statement.get persistent=true with undefined', () => {
+  db.exec('DELETE FROM t');
+  expect(
+    db.prepare('SELECT * FROM t', { persistent: true }).get(),
+  ).toBeUndefined();
+});
+
 test('statement.all persistent=true', () => {
   expect(db.prepare('SELECT * FROM t', { persistent: true }).all()).toEqual(
     rows,
