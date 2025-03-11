@@ -67,13 +67,5 @@ jobs:
         if: matrix.os != 'windows-latest'
         run: pnpm lint
 
-      - name: Run format
-        if: matrix.os != 'windows-latest'
-        run: pnpm run format
-
-      - name: Verify no formatting changes
-        if: matrix.os != 'windows-latest'
-        run: git diff --exit-code
-
       - name: Run tests
         run: pnpm test

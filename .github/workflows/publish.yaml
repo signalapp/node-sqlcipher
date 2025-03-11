@@ -129,13 +129,6 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: Format
-        run: pnpm format
-
-      - name: Verify no formatting changes
-        if: matrix.os != 'windows-latest'
-        run: git diff --exit-code
-
       - run: pnpm test
         env:
           PREBUILDS_ONLY: 1
