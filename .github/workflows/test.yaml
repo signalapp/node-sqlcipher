@@ -2,7 +2,11 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 name: Test
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
 
 jobs:
   test:
