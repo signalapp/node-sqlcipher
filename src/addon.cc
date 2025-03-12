@@ -14,9 +14,11 @@
 
 class SignalTokenizerModule {
  public:
-  static void Destroy(void* p_ctx) {}
+  static void Destroy(void* p_ctx) {
+    delete static_cast<SignalTokenizerModule*>(p_ctx);
+  }
 
-  inline fts5_tokenizer* GetAPIObject() { return &api_object; }
+  static fts5_tokenizer api_object;
 
  private:
   static int Create(void* p_ctx, char const**, int, Fts5Tokenizer** pp_out) {
@@ -26,7 +28,6 @@ class SignalTokenizerModule {
   }
 
   static void Delete(Fts5Tokenizer* tokenizer) {}
-  static fts5_tokenizer api_object;
 };
 
 fts5_tokenizer SignalTokenizerModule::api_object = {
@@ -70,6 +71,27 @@ static Napi::Value SignalTokenize(const Napi::CallbackInfo& info) {
   }
 
   return result;
+}
+
+// Utils
+
+Napi::Error FormatError(Napi::Env env, const char* format, ...) {
+  va_list args;
+
+  // Get buffer size
+  va_start(args, format);
+  auto size = vsnprintf(nullptr, 0, format, args);
+  va_end(args);
+
+  // Allocate and fill the string
+  auto buf = new char[size + 1];
+  va_start(args, format);
+  vsnprintf(buf, size + 1, format, args);
+  va_end(args);
+
+  auto err = Napi::Error::New(env, std::string(buf, size));
+  delete[] buf;
+  return err;
 }
 
 // Database
@@ -126,10 +148,8 @@ Napi::Value Database::Open(const Napi::CallbackInfo& info) {
   sqlite3* handle = nullptr;
   int r = sqlite3_open_v2(path_utf8.c_str(), &handle, flags, nullptr);
   if (r != SQLITE_OK) {
-    char buf[1024];
-
-    snprintf(buf, sizeof(buf), "sqlite open error: %s", sqlite3_errstr(r));
-    NAPI_THROW(Napi::Error::New(env, buf), Napi::Value());
+    NAPI_THROW(FormatError(env, "sqlite open error: %s", sqlite3_errstr(r)),
+               Napi::Value());
   }
 
   auto db = new Database(env, handle);
@@ -145,8 +165,12 @@ Napi::Value Database::Open(const Napi::CallbackInfo& info) {
     return Napi::Value();
   }
   SignalTokenizerModule* icu = new SignalTokenizerModule();
-  fts5->xCreateTokenizer(fts5, "signal_tokenizer", icu, icu->GetAPIObject(),
-                         &SignalTokenizerModule::Destroy);
+  r = fts5->xCreateTokenizer(fts5, "signal_tokenizer", icu, &icu->api_object,
+                             &SignalTokenizerModule::Destroy);
+  if (r != SQLITE_OK) {
+    delete icu;
+    return db->ThrowSqliteError(env, r);
+  }
 
   return db->self_ref_.Value();
 }
@@ -204,20 +228,18 @@ Napi::Value Database::Exec(const Napi::CallbackInfo& info) {
 }
 
 Napi::Value Database::ThrowSqliteError(Napi::Env env, int error) {
-  char buf[1024];
-
   assert(handle_ != nullptr);
   const char* msg = sqlite3_errmsg(handle_);
   int offset = sqlite3_error_offset(handle_);
   int extended = sqlite3_extended_errcode(handle_);
   if (offset == -1) {
-    snprintf(buf, sizeof(buf), "sqlite error(%d): %s", extended, msg);
+    NAPI_THROW(FormatError(env, "sqlite error(%d): %s", extended, msg),
+               Napi::Value());
   } else {
-    snprintf(buf, sizeof(buf), "sqlite error(%d): %s, offset: %d", extended,
-             msg, offset);
+    NAPI_THROW(FormatError(env, "sqlite error(%d): %s, offset: %d", extended,
+                           msg, offset),
+               Napi::Value());
   }
-
-  NAPI_THROW(Napi::Error::New(env, buf), Napi::Value());
 }
 
 fts5_api* Database::GetFTS5API(Napi::Env env) {
@@ -249,7 +271,9 @@ std::list<Statement*>::const_iterator Database::TrackStatement(
   self_ref_.Ref();
 
   statements_.emplace_back(stmt);
-  return --statements_.end();
+  auto end = statements_.end();
+  end--;
+  return end;
 }
 
 void Database::UntrackStatement(std::list<Statement*>::const_iterator iter) {
@@ -492,8 +516,6 @@ Napi::Value Statement::Step(const Napi::CallbackInfo& info) {
 }
 
 bool Statement::BindParams(Napi::Env env, Napi::Value params) {
-  char buf[1024];
-
   int key_count = sqlite3_bind_parameter_count(handle_);
 
   if (params.IsNull()) {
@@ -505,29 +527,29 @@ bool Statement::BindParams(Napi::Env env, Napi::Value params) {
       return true;
     }
 
-    snprintf(buf, sizeof(buf), "Expected %d parameters, got 0", key_count);
-    NAPI_THROW(Napi::Error::New(env, buf), false);
+    NAPI_THROW(FormatError(env, "Expected %d parameters, got 0", key_count),
+               false);
   } else if (params.IsArray()) {
     auto list = params.As<Napi::Array>();
     auto list_len = static_cast<int>(list.Length());
     if (list_len != key_count) {
-      snprintf(buf, sizeof(buf), "Expected %d parameters, got %d", key_count,
-               list_len);
-      NAPI_THROW(Napi::Error::New(env, buf), false);
+      NAPI_THROW(FormatError(env, "Expected %d parameters, got %d", key_count,
+                             list_len),
+                 false);
     }
 
     for (int i = 1; i <= list_len; i++) {
       auto name = sqlite3_bind_parameter_name(handle_, i);
       if (name != nullptr) {
-        snprintf(buf, sizeof(buf), "Unexpected named param %s at %d", name, i);
-        NAPI_THROW(Napi::Error::New(env, buf), false);
+        NAPI_THROW(FormatError(env, "Unexpected named param %s at %d", name, i),
+                   false);
       }
 
       auto error = BindParam(env, i, list[i - 1]);
       if (error != nullptr) {
-        snprintf(buf, sizeof(buf), "Failed to bind param %d, error %s", i,
-                 error);
-        NAPI_THROW(Napi::Error::New(env, buf), false);
+        NAPI_THROW(
+            FormatError(env, "Failed to bind param %d, error %s", i, error),
+            false);
       }
     }
   } else {
@@ -536,8 +558,8 @@ bool Statement::BindParams(Napi::Env env, Napi::Value params) {
     for (int i = 1; i <= key_count; i++) {
       auto name = sqlite3_bind_parameter_name(handle_, i);
       if (name == nullptr) {
-        snprintf(buf, sizeof(buf), "Unexpected anonymous param at %d", i);
-        NAPI_THROW(Napi::Error::New(env, buf), false);
+        NAPI_THROW(FormatError(env, "Unexpected anonymous param at %d", i),
+                   false);
       }
 
       // Skip "$"
@@ -545,9 +567,9 @@ bool Statement::BindParams(Napi::Env env, Napi::Value params) {
       auto value = obj[name];
       auto error = BindParam(env, i, value);
       if (error != nullptr) {
-        snprintf(buf, sizeof(buf), "Failed to bind param %s, error %s", name,
-                 error);
-        NAPI_THROW(Napi::Error::New(env, buf), false);
+        NAPI_THROW(
+            FormatError(env, "Failed to bind param %s, error %s", name, error),
+            false);
       }
     }
   }

@@ -79,61 +79,41 @@ class Statement {
   // statements.
   //
   // If return value `false` - only whitespace and comments remain.
-  static inline bool HasTail(const char* tail) {
-    for (; *tail != 0; tail++) {
-      switch (*tail) {
-        // Various whitespace
-        case '\t':  // 0x09
-        case '\r':  // 0x0a
-        case '\v':  // 0x0b
-        case '\f':  // 0x0c
-        case '\n':  // 0x0d
-        case ' ':
+  //
+  // Note: we use `rfind(..., 0)` for effectively a prefix check.
+  static inline bool HasTail(std::string const& tail) {
+    std::string p(tail);
+    while (!p.empty()) {
+      auto ch = p.front();
+      // Various whitespace or statement separator
+      if (std::isspace(ch) || ch == ';') {
+        p = p.substr(1);
 
-        // Statement separator
-        case ';':
-          break;
+      } else if (p.rfind("--", 0) == 0)  {
+        // Line comment: "--"
+        p = p.substr(2);
 
-        // Line comment
-        case '-':
-          tail++;
-          if (*tail != '-') {
-            return true;
-          }
+        // Skip until the end of the line
+        auto end = p.find("\n");
+        if (end == p.npos) {
+          return false;
+        }
 
-          tail = strchr(tail, '\n');
-          if (tail == nullptr) {
-            return false;
-          }
+        p = p.substr(end + 1);
 
-          break;
-
+      } else if (p.rfind("/*", 0) == 0) {
         // Block comment
-        case '/':
-          tail++;
-          if (*tail != '*') {
-            return true;
-          }
+        p = p.substr(2);
 
-          // Look for closing '*/'
-          while (true) {
-            tail = strchr(tail, '*');
-            if (tail == nullptr) {
-              return false;
-            }
+        auto end = p.find("*/");
+        if (end == p.npos) {
+          return false;
+        }
 
-            tail++;
-            const char next = *tail;
-            if (next == 0) {
-              return false;
-            }
-            if (next == '/') {
-              tail++;
-              break;
-            }
-          }
-        default:
-          return true;
+        p = p.substr(end + 2);
+      } else {
+        // Not whitespace or comments
+        return true;
       }
     }
     return false;

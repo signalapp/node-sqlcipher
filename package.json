@@ -41,7 +41,7 @@
     "build:docs": "typedoc lib/index.ts --includeVersion",
     "install": "node-gyp-build",
     "prebuildify": "prebuildify --strip --napi",
-    "test": "vitest --coverage",
+    "test": "vitest --coverage --pool threads",
     "format": "run-p --print-label format:c format:js",
     "format:c": "xcrun clang-format --style=chromium -Werror --verbose -i src/*.cc",
     "format:js": "prettier --cache --write .",
