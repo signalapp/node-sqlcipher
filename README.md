@@ -37,7 +37,7 @@ cd deps/sqlcipher
 export OPENSSL_PREFIX=`brew --prefix openssl`
 export CFLAGS="-I $OPENSSL_PREFIX/include"
 export LIBRARY_PATH="$LIBRARY_PATH:$OPENSSL_PREFIX/lib"
-./update.sh v4.6.1
+./update.sh v4.7.0
 cd -
 ```
 

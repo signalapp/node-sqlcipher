@@ -69,6 +69,8 @@
         'SQLITE_HAS_CODEC',
         'SQLITE_TEMP_STORE=2',
         'SQLITE_SECURE_DELETE',
+        'SQLITE_EXTRA_INIT=sqlcipher_extra_init',
+        'SQLITE_EXTRA_SHUTDOWN=sqlcipher_extra_shutdown',
       ],
       'conditions': [
         ['OS == "win"', {
