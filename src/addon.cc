@@ -98,6 +98,8 @@ Napi::Error FormatError(Napi::Env env, const char* format, ...) {
 
 Napi::Object Database::Init(Napi::Env env, Napi::Object exports) {
   exports["databaseOpen"] = Napi::Function::New(env, &Database::Open);
+  exports["databaseInitTokenizer"] =
+      Napi::Function::New(env, &Database::InitTokenizer);
   exports["databaseClose"] = Napi::Function::New(env, &Database::Close);
   exports["databaseExec"] = Napi::Function::New(env, &Database::Exec);
   return exports;
@@ -159,20 +161,32 @@ Napi::Value Database::Open(const Napi::CallbackInfo& info) {
     return db->ThrowSqliteError(env, r);
   }
 
+  return db->self_ref_.Value();
+}
+
+Napi::Value Database::InitTokenizer(const Napi::CallbackInfo& info) {
+  auto env = info.Env();
+
+  auto db = FromExternal(info[0]);
+  if (db == nullptr) {
+    return Napi::Value();
+  }
+
   fts5_api* fts5 = db->GetFTS5API(env);
 
   if (fts5 == nullptr) {
     return Napi::Value();
   }
   SignalTokenizerModule* icu = new SignalTokenizerModule();
-  r = fts5->xCreateTokenizer(fts5, "signal_tokenizer", icu, &icu->api_object,
+  int r =
+      fts5->xCreateTokenizer(fts5, "signal_tokenizer", icu, &icu->api_object,
                              &SignalTokenizerModule::Destroy);
   if (r != SQLITE_OK) {
     delete icu;
     return db->ThrowSqliteError(env, r);
   }
 
-  return db->self_ref_.Value();
+  return Napi::Value();
 }
 
 Napi::Value Database::Close(const Napi::CallbackInfo& info) {

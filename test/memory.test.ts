@@ -380,6 +380,18 @@ test('bigint mode', () => {
   ).toEqual(n);
 });
 
+test('tokenizer setup', () => {
+  db.initTokenizer();
+});
+
+test('tokenizer setup after close', () => {
+  db.close();
+  expect(() => db.initTokenizer()).toThrowError('Database closed');
+
+  // Just to fix afterEach
+  db = new Database();
+});
+
 test('signalTokenize', () => {
   expect(db.signalTokenize('a b c')).toEqual(['a', 'b', 'c']);
 });

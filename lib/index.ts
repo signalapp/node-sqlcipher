@@ -42,6 +42,7 @@ const addon = bindings<{
   statementClose(stmt: NativeStatement): void;
 
   databaseOpen(path: string): NativeDatabase;
+  databaseInitTokenizer(db: NativeDatabase): void;
   databaseExec(db: NativeDatabase, query: string): void;
   databaseClose(db: NativeDatabase): void;
 
@@ -348,6 +349,13 @@ export default class Database {
     }
     this.#native = addon.databaseOpen(path);
     this.#isCacheEnabled = cacheStatements === true;
+  }
+
+  public initTokenizer(): void {
+    if (this.#native === undefined) {
+      throw new Error('Database closed');
+    }
+    addon.databaseInitTokenizer(this.#native);
   }
 
   /**
