@@ -398,6 +398,9 @@ Napi::Value Statement::Close(const Napi::CallbackInfo& info) {
   auto env = info.Env();
 
   auto stmt = FromExternal(info[0]);
+  if (stmt == nullptr) {
+    return Napi::Value();
+  }
 
   int r = sqlite3_finalize(stmt->handle_);
   if (r != SQLITE_OK) {
@@ -413,6 +416,10 @@ Napi::Value Statement::Run(const Napi::CallbackInfo& info) {
   auto env = info.Env();
 
   auto stmt = FromExternal(info[0]);
+  if (stmt == nullptr) {
+    return Napi::Value();
+  }
+
   auto params = info[1];
   auto result = info[2].As<Napi::Array>();
 
@@ -451,6 +458,10 @@ Napi::Value Statement::Step(const Napi::CallbackInfo& info) {
   auto env = info.Env();
 
   auto stmt = FromExternal(info[0]);
+  if (stmt == nullptr) {
+    return Napi::Value();
+  }
+
   auto params = info[1];
   auto cache = info[2];
   auto is_get = info[3].As<Napi::Boolean>();

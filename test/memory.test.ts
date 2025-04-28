@@ -49,6 +49,16 @@ test('db.close', () => {
   db = new Database();
 });
 
+test('db.close with existing statement', () => {
+  const stmt = db.prepare('SELECT 1');
+  db.close();
+
+  expect(() => stmt.run()).toThrowError('Statement closed');
+
+  // Just to fix afterEach
+  db = new Database();
+});
+
 test('statement.close', () => {
   const stmt = db.prepare('SELECT 1');
   stmt.close();
