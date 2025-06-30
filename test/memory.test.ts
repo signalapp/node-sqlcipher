@@ -390,6 +390,25 @@ test('bigint mode', () => {
   ).toEqual(n);
 });
 
+test('extended error codes', () => {
+  db.exec(`
+    CREATE TABLE parent (id INTEGER PRIMARY KEY);
+
+    CREATE TABLE refs (id INTEGER, FOREIGN KEY (id) REFERENCES parent(id));
+  `);
+
+  const stmt = db.prepare('INSERT INTO refs (id) VALUES (?)');
+
+  expect(() => stmt.run([4])).toThrowError(
+    expect.objectContaining({
+      message:
+        'sqlite error(SQLITE_CONSTRAINT_FOREIGNKEY): ' +
+        'FOREIGN KEY constraint failed',
+      code: 'SQLITE_CONSTRAINT_FOREIGNKEY',
+    }),
+  );
+});
+
 test('tokenizer setup', () => {
   db.initTokenizer();
 });

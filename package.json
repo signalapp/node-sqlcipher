@@ -44,7 +44,7 @@
     "prebuildify": "prebuildify --strip --napi",
     "test": "vitest --coverage --pool threads",
     "format": "run-p --print-label format:c format:js",
-    "format:c": "xcrun clang-format --style=chromium -Werror --verbose -i src/*.cc",
+    "format:c": "xcrun clang-format --style=chromium -Werror --verbose -i src/*.cc src/*.h",
     "format:js": "prettier --cache --write .",
     "lint": "run-p --print-label check:eslint check:format",
     "check:eslint": "eslint --cache .",

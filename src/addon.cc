@@ -5,6 +5,7 @@
 #include <list>
 
 #include "addon.h"
+#include "errors.h"
 
 #include "napi.h"
 #include "signal-tokenizer.h"
@@ -246,14 +247,32 @@ Napi::Value Database::ThrowSqliteError(Napi::Env env, int error) {
   const char* msg = sqlite3_errmsg(handle_);
   int offset = sqlite3_error_offset(handle_);
   int extended = sqlite3_extended_errcode(handle_);
-  if (offset == -1) {
-    NAPI_THROW(FormatError(env, "sqlite error(%d): %s", extended, msg),
-               Napi::Value());
-  } else {
-    NAPI_THROW(FormatError(env, "sqlite error(%d): %s, offset: %d", extended,
-                           msg, offset),
-               Napi::Value());
+
+#define EXTENDED_STR(NAME) \
+  case NAME:               \
+    extended_name = #NAME; \
+    break;
+
+  const char* extended_name;
+  switch (extended) {
+    SQLITE_ERROR_ENUM(EXTENDED_STR)
+    default:
+      extended_name = "unknown";
+      break;
   }
+
+#undef EXTENDED_STR
+
+  Napi::Error err;
+  if (offset == -1) {
+    err = FormatError(env, "sqlite error(%s): %s", extended_name, msg);
+  } else {
+    err = FormatError(env, "sqlite error(%s): %s, offset: %d", extended_name,
+                      msg, offset);
+  }
+
+  err.Set("code", extended_name);
+  NAPI_THROW(err, Napi::Value());
 }
 
 fts5_api* Database::GetFTS5API(Napi::Env env) {

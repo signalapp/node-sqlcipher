@@ -93,7 +93,7 @@ class Statement {
       if (std::isspace(ch) || ch == ';') {
         p = p.substr(1);
 
-      } else if (p.rfind("--", 0) == 0)  {
+      } else if (p.rfind("--", 0) == 0) {
         // Line comment: "--"
         p = p.substr(2);
 
