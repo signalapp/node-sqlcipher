@@ -659,6 +659,8 @@ Napi::Value Statement::ScanStats(const Napi::CallbackInfo& info) {
 }
 #else   // !SQLITE_ENABLE_STMT_SCANSTATUS
 Napi::Value Statement::ScanStats(const Napi::CallbackInfo& info) {
+  auto env = info.Env();
+
   NAPI_THROW(Napi::Error::New(env, "Not available in production builds"),
              Napi::Value());
 }
