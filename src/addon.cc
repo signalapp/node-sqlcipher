@@ -321,6 +321,8 @@ Napi::Object Statement::Init(Napi::Env env, Napi::Object exports) {
   exports["statementClose"] = Napi::Function::New(env, &Statement::Close);
   exports["statementRun"] = Napi::Function::New(env, &Statement::Run);
   exports["statementStep"] = Napi::Function::New(env, &Statement::Step);
+  exports["statementScanStats"] =
+      Napi::Function::New(env, &Statement::ScanStats);
   return exports;
 }
 
@@ -561,6 +563,106 @@ Napi::Value Statement::Step(const Napi::CallbackInfo& info) {
 
   return result;
 }
+
+// Only enabled on `-profiling` npm package versions
+
+#ifdef SQLITE_ENABLE_STMT_SCANSTATUS
+Napi::Value Statement::ScanStats(const Napi::CallbackInfo& info) {
+  auto env = info.Env();
+
+  auto stmt = FromExternal(info[0]);
+  if (stmt == nullptr) {
+    return Napi::Value();
+  }
+
+  sqlite3_int64 total_cycles = 0;
+  int r = sqlite3_stmt_scanstatus_v2(stmt->handle_, -1, SQLITE_SCANSTAT_NCYCLE,
+                                     SQLITE_SCANSTAT_COMPLEX, &total_cycles);
+
+  if (r != SQLITE_OK) {
+    return stmt->db_->ThrowSqliteError(env, r);
+  }
+
+  auto results = Napi::Array::New(env, 1);
+
+  auto root = Napi::Object::New(env);
+
+  root["id"] = 0;
+  root["parent"] = -1;
+  root["cycles"] = total_cycles;
+  root["loops"] = -1;
+  root["rows"] = -1;
+  root["explain"] = env.Null();
+  results[static_cast<uint32_t>(0)] = root;
+
+  for (int idx = 0; r == SQLITE_OK; idx++) {
+    int id = 0;
+    int parent = 0;
+    sqlite3_int64 cycles = 0;
+    sqlite3_int64 loops = 0;
+    sqlite3_int64 rows = 0;
+    const char* explain = nullptr;
+
+    r = sqlite3_stmt_scanstatus_v2(stmt->handle_, idx, SQLITE_SCANSTAT_SELECTID,
+                                   SQLITE_SCANSTAT_COMPLEX, &id);
+    if (r != SQLITE_OK) {
+      break;
+    }
+    r = sqlite3_stmt_scanstatus_v2(stmt->handle_, idx, SQLITE_SCANSTAT_PARENTID,
+                                   SQLITE_SCANSTAT_COMPLEX, &parent);
+    if (r != SQLITE_OK) {
+      break;
+    }
+    r = sqlite3_stmt_scanstatus_v2(stmt->handle_, idx, SQLITE_SCANSTAT_NCYCLE,
+                                   SQLITE_SCANSTAT_COMPLEX, &cycles);
+    if (r != SQLITE_OK) {
+      break;
+    }
+    r = sqlite3_stmt_scanstatus_v2(stmt->handle_, idx, SQLITE_SCANSTAT_NLOOP,
+                                   SQLITE_SCANSTAT_COMPLEX, &loops);
+    if (r != SQLITE_OK) {
+      break;
+    }
+    r = sqlite3_stmt_scanstatus_v2(stmt->handle_, idx, SQLITE_SCANSTAT_NVISIT,
+                                   SQLITE_SCANSTAT_COMPLEX, &rows);
+    if (r != SQLITE_OK) {
+      break;
+    }
+    r = sqlite3_stmt_scanstatus_v2(stmt->handle_, idx, SQLITE_SCANSTAT_EXPLAIN,
+                                   SQLITE_SCANSTAT_COMPLEX, &explain);
+    if (r != SQLITE_OK) {
+      break;
+    }
+
+    auto result = Napi::Object::New(env);
+
+    result["id"] = id;
+    result["parent"] = parent;
+    result["cycles"] = cycles;
+    result["loops"] = loops;
+    result["rows"] = rows;
+    if (explain == nullptr) {
+      result["explain"] = env.Null();
+    } else {
+      result["explain"] = explain;
+    }
+
+    results[static_cast<uint32_t>(idx + 1)] = result;
+  }
+
+  // SQLITE_ERROR is returned when `idx` is out of range
+  if (r != SQLITE_ERROR) {
+    return stmt->db_->ThrowSqliteError(env, r);
+  }
+
+  return results;
+}
+#else   // !SQLITE_ENABLE_STMT_SCANSTATUS
+Napi::Value Statement::ScanStats(const Napi::CallbackInfo& info) {
+  NAPI_THROW(Napi::Error::New(env, "Not available in production builds"),
+             Napi::Value());
+}
+#endif  // !SQLITE_ENABLE_STMT_SCANSTATUS
 
 bool Statement::BindParams(Napi::Env env, Napi::Value params) {
   int key_count = sqlite3_bind_parameter_count(handle_);

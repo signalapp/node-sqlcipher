@@ -73,6 +73,7 @@
         'SQLITE_EXTRA_SHUTDOWN=sqlcipher_extra_shutdown',
       ],
       'conditions': [
+        # Link with extension
         ['OS == "win"', {
           'defines': [
             'WIN32'
@@ -94,6 +95,18 @@
             'libraries': [
               '<(SHARED_INTERMEDIATE_DIR)/libsignal_sqlcipher_extension.a',
             ]
+          },
+        }],
+
+        # Profiling
+        ["\"<!(node -p \"require('../../package.json').version\")\".endswith(\"-profiling\")", {
+          'defines': [
+            'SQLITE_ENABLE_STMT_SCANSTATUS'
+          ],
+          'direct_dependent_settings': {
+            'defines': [
+              'SQLITE_ENABLE_STMT_SCANSTATUS'
+            ],
           },
         }],
       ],

@@ -39,6 +39,7 @@ const addon = bindings<{
     cache: Array<SqliteValue<Options>> | undefined,
     isGet: boolean,
   ): Array<SqliteValue<Options>>;
+  statementScanStats(stmt: NativeStatement): Array<ScanStats>;
   statementClose(stmt: NativeStatement): void;
 
   databaseOpen(path: string): NativeDatabase;
@@ -226,6 +227,20 @@ class Statement<Options extends StatementOptions = object> {
   }
 
   /**
+   * Report collected performance statics for the statement.
+   *
+   * @returns A list of objects describing the performance of the query.
+   *
+   * @see {@link https://www.sqlite.org/profile.html}
+   */
+  public scanStats(): Array<ScanStats> {
+    if (this.#native === undefined) {
+      throw new Error('Statement closed');
+    }
+    return addon.statementScanStats(this.#native);
+  }
+
+  /**
    * Close the statement and release the used memory.
    */
   public close(): void {
@@ -301,6 +316,20 @@ export type PragmaResult<Options extends PragmaOptions> = Options extends {
 }
   ? RowType<{ pluck: true }> | undefined
   : Array<RowType<object>>;
+
+/**
+ * An entry of result array of `stmt.scanStats()` method.
+ *
+ * Value of `-1` indicates that the field is not available for a given entry.
+ */
+export type ScanStats = Readonly<{
+  id: number;
+  parent: number;
+  cycles: number;
+  loops: number;
+  rows: number;
+  explain: string | null;
+}>;
 
 /** @internal */
 type TransactionStatement = Statement<{ persistent: true; pluck: true }>;

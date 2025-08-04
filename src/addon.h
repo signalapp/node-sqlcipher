@@ -131,6 +131,7 @@ class Statement {
   static Napi::Value Close(const Napi::CallbackInfo& info);
   static Napi::Value Run(const Napi::CallbackInfo& info);
   static Napi::Value Step(const Napi::CallbackInfo& info);
+  static Napi::Value ScanStats(const Napi::CallbackInfo& info);
 
   bool BindParams(Napi::Env env, Napi::Value params);
 
