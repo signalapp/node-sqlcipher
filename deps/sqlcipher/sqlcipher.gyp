@@ -99,7 +99,7 @@
         }],
 
         # Profiling
-        ["\"-profiling\.\" in \"<!(node -p \"require('../../package.json').version\")\"", {
+        ["\"-profiling.\" in \"<!(node -p \"require('../../package.json').version\")\"", {
           'defines': [
             'SQLITE_ENABLE_STMT_SCANSTATUS'
           ],
