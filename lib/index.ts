@@ -555,7 +555,14 @@ export default class Database {
         commit.run();
         return result;
       } catch (error) {
-        rollback.run();
+        try {
+          rollback.run();
+        } catch (rollbackError) {
+          if (rollbackError instanceof Error) {
+            rollbackError.cause = error;
+          }
+          throw rollbackError;
+        }
         throw error;
       } finally {
         this.#transactionDepth -= 1;
