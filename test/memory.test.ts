@@ -1,6 +1,6 @@
 import { describe, expect, test, beforeEach, afterEach } from 'vitest';
 
-import Database from '../lib/index.js';
+import Database, { setLogger } from '../lib/index.js';
 
 const rows = [
   {
@@ -178,6 +178,21 @@ test('persistent statement recompilation', () => {
     c: Buffer.from('abba', 'hex'),
     d: 'hello',
   });
+});
+
+test('setLogger should log on statement recompilation', () => {
+  const messages = new Array<{ code: string; message: string }>();
+  setLogger((code, message) => messages.push({ code, message }));
+
+  const stmt = db.prepare('SELECT * FROM t', { persistent: true });
+
+  db.exec(`ALTER TABLE t ADD COLUMN d TEXT DEFAULT 'hello'`);
+
+  expect(stmt.get()).not.toBeUndefined();
+
+  expect(messages).toHaveLength(1);
+  expect(messages[0]?.code).toEqual('SQLITE_SCHEMA');
+  expect(messages[0]?.message).toMatch(/database schema has changed/);
 });
 
 describe('list parameters', () => {

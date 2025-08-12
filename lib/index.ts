@@ -48,6 +48,8 @@ const addon = bindings<{
   databaseClose(db: NativeDatabase): void;
 
   signalTokenize(value: string): Array<string>;
+
+  setLogger(fn: (code: string, message: string) => void): void;
 }>(ROOT_DIR);
 
 export type RunResult = {
@@ -587,4 +589,12 @@ export default class Database {
   }
 }
 
-export { Database };
+function setLogger(fn: (code: string, message: string) => void): void {
+  if (typeof fn !== 'function') {
+    throw new TypeError('Invalid value');
+  }
+
+  return addon.setLogger(fn);
+}
+
+export { Database, setLogger };
