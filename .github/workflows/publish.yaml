@@ -118,10 +118,6 @@ jobs:
   publish:
     name: Publish
 
-    strategy:
-      matrix:
-        buildType: ['production', 'profiling']
-
     permissions:
       # Needed for ncipollo/release-action.
       contents: 'write'
@@ -146,16 +142,12 @@ jobs:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org/'
 
-      - name: Download built libraries
+      - name: Download built production libraries
         uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.19.1
         with:
-          pattern: sqlcipher-${{matrix.buildType}}-*
+          pattern: sqlcipher-production-*
           path: prebuilds
           merge-multiple: true
-
-      - name: Update package.json
-        if: ${{ matrix.buildType == 'profiling' }}
-        run: pnpm version prerelease --no-git-tag-version --preid profiling
 
       - name: Install node_modules
         run: pnpm install --frozen-lockfile
@@ -171,14 +163,7 @@ jobs:
           PREBUILDS_ONLY: 1
 
       - name: Publish production
-        if: ${{ matrix.buildType == 'production' }}
         run: pnpm publish --tag '${{ github.event.inputs.npm_tag }}' --access public --no-git-checks ${{ inputs.dry_run && '--dry-run' || ''}}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish profiling
-        if: ${{ matrix.buildType == 'profiling' }}
-        run: pnpm publish --tag 'profiling' --access public --no-git-checks ${{ inputs.dry_run && '--dry-run' || ''}}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -194,8 +179,29 @@ jobs:
       # This step is expected to fail if not run on a tag.
       - name: Upload debug info to release
         uses: ncipollo/release-action@440c8c1cb0ed28b9f43e4d1d670870f059653174 # v1.16.0
-        if: ${{ !inputs.dry_run && matrix.buildType == 'production' }}
         with:
           allowUpdates: true
           artifactErrorsFailBuild: true
           artifacts: prebuilds/node_sqlcipher_*.sym
+
+      - name: Update package.json version to profiling
+        run: pnpm version prerelease --no-git-tag-version --preid profiling
+
+      - name: Remove production prebuilds
+        run: rm prebuilds
+
+      - name: Download built profiling libraries
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.19.1
+        with:
+          pattern: sqlcipher-production-*
+          path: prebuilds
+          merge-multiple: true
+
+      - run: pnpm test (profiling)
+        env:
+          PREBUILDS_ONLY: 1
+
+      - name: Publish profiling
+        run: pnpm publish --tag 'profiling' --access public --no-git-checks ${{ inputs.dry_run && '--dry-run' || ''}}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
