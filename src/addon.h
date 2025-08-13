@@ -27,7 +27,6 @@ class Database {
 
   static Database* FromExternal(const Napi::Value value);
   static Napi::Value Open(const Napi::CallbackInfo& info);
-  static Napi::Value InitTokenizer(const Napi::CallbackInfo& info);
   static Napi::Value Close(const Napi::CallbackInfo& info);
   static Napi::Value Exec(const Napi::CallbackInfo& info);
 

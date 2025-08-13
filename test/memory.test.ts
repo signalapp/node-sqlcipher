@@ -409,26 +409,6 @@ test('extended error codes', () => {
   );
 });
 
-test('tokenizer setup', () => {
-  db.initTokenizer();
-});
-
-test('tokenizer setup after close', () => {
-  db.close();
-  expect(() => db.initTokenizer()).toThrowError('Database closed');
-
-  // Just to fix afterEach
-  db = new Database();
-});
-
-test('signalTokenize', () => {
-  expect(db.signalTokenize('a b c')).toEqual(['a', 'b', 'c']);
-});
-
-test('invalid argument for signalTokenize', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  expect(() => db.signalTokenize(123 as any)).toThrowError('Invalid value');
-});
 
 test('does not cache statements', () => {
   expect(db.prepare('SELECT 1')).not.toBe(db.prepare('SELECT 1'));

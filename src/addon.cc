@@ -8,71 +8,8 @@
 #include "errors.h"
 
 #include "napi.h"
-#include "signal-tokenizer.h"
 #include "sqlite3.h"
 
-// Signal Tokenizer
-
-class SignalTokenizerModule {
- public:
-  static void Destroy(void* p_ctx) {
-    delete static_cast<SignalTokenizerModule*>(p_ctx);
-  }
-
-  static fts5_tokenizer api_object;
-
- private:
-  static int Create(void* p_ctx, char const**, int, Fts5Tokenizer** pp_out) {
-    SignalTokenizerModule* m = static_cast<SignalTokenizerModule*>(p_ctx);
-    *pp_out = reinterpret_cast<Fts5Tokenizer*>(m);
-    return SQLITE_OK;
-  }
-
-  static void Delete(Fts5Tokenizer* tokenizer) {}
-};
-
-fts5_tokenizer SignalTokenizerModule::api_object = {
-    &Create,
-    &Delete,
-    signal_fts5_tokenize,
-};
-
-static int SignalTokenizeCallback(void* tokens_ptr,
-                                  int _flags,
-                                  char const* token,
-                                  int len,
-                                  int _start,
-                                  int _end) {
-  std::vector<std::string>* tokens =
-      reinterpret_cast<std::vector<std::string>*>(tokens_ptr);
-  tokens->push_back(std::string(token, len));
-  return SQLITE_OK;
-}
-
-static Napi::Value SignalTokenize(const Napi::CallbackInfo& info) {
-  auto env = info.Env();
-
-  auto value = info[0].As<Napi::String>();
-  assert(value.IsString());
-
-  auto utf8 = value.Utf8Value();
-
-  std::vector<std::string> tokens;
-  int status =
-      signal_fts5_tokenize(nullptr, reinterpret_cast<void*>(&tokens), 0,
-                           utf8.c_str(), utf8.length(), SignalTokenizeCallback);
-  if (status != SQLITE_OK) {
-    NAPI_THROW(Napi::Error::New(env, "Failed to tokenize"), Napi::Value());
-  }
-
-  auto result = Napi::Array::New(env, tokens.size());
-  int i = 0;
-  for (auto& str : tokens) {
-    result[i++] = str.c_str();
-  }
-
-  return result;
-}
 
 // Utils
 
@@ -99,8 +36,6 @@ Napi::Error FormatError(Napi::Env env, const char* format, ...) {
 
 Napi::Object Database::Init(Napi::Env env, Napi::Object exports) {
   exports["databaseOpen"] = Napi::Function::New(env, &Database::Open);
-  exports["databaseInitTokenizer"] =
-      Napi::Function::New(env, &Database::InitTokenizer);
   exports["databaseClose"] = Napi::Function::New(env, &Database::Close);
   exports["databaseExec"] = Napi::Function::New(env, &Database::Exec);
   return exports;
@@ -165,30 +100,6 @@ Napi::Value Database::Open(const Napi::CallbackInfo& info) {
   return db->self_ref_.Value();
 }
 
-Napi::Value Database::InitTokenizer(const Napi::CallbackInfo& info) {
-  auto env = info.Env();
-
-  auto db = FromExternal(info[0]);
-  if (db == nullptr) {
-    return Napi::Value();
-  }
-
-  fts5_api* fts5 = db->GetFTS5API(env);
-
-  if (fts5 == nullptr) {
-    return Napi::Value();
-  }
-  SignalTokenizerModule* icu = new SignalTokenizerModule();
-  int r =
-      fts5->xCreateTokenizer(fts5, "signal_tokenizer", icu, &icu->api_object,
-                             &SignalTokenizerModule::Destroy);
-  if (r != SQLITE_OK) {
-    delete icu;
-    return db->ThrowSqliteError(env, r);
-  }
-
-  return Napi::Value();
-}
 
 Napi::Value Database::Close(const Napi::CallbackInfo& info) {
   auto env = info.Env();
@@ -856,7 +767,6 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
 
   Database::Init(env, exports);
   Statement::Init(env, exports);
-  exports["signalTokenize"] = Napi::Function::New(env, &SignalTokenize);
   return exports;
 }
 

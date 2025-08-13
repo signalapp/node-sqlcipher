@@ -25,8 +25,7 @@ docker run ${IS_TTY:+ -it} --init --rm -v "${PWD}":/home/sqlcipher/src ${DOCKER_
     cd src &&
     npm i -g pnpm &&
     pnpm install --frozen-lockfile &&
-    env CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
-        CC=aarch64-linux-gnu-gcc \
+    env CC=aarch64-linux-gnu-gcc \
         CXX=aarch64-linux-gnu-g++ \
         CPATH=/usr/aarch64-linux-gnu/include \
         PREBUILD_STRIP_BIN=aarch64-linux-gnu-strip \

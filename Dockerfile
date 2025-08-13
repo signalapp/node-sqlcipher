@@ -19,7 +19,7 @@ RUN    apt-get update -oAcquire::https::Verify-Peer=false \
     && apt-get install -oAcquire::https::Verify-Peer=false -y ca-certificates
 # Back to normal, verification back on
 
-# Install only what's needed to set up Rust and Node.
+# Install only what's needed to set up Node.
 # We'll install additional tools at the end to take advantage of Docker's caching of earlier steps.
 RUN apt-get update && apt-get install -y apt-transport-https xz-utils unzip
 
@@ -40,19 +40,6 @@ ENV CI=on
 
 WORKDIR /home/sqlcipher
 
-# Rust setup
-COPY rust-toolchain rust-toolchain
-ENV PATH="/home/sqlcipher/.cargo/bin:${PATH}"
-ARG RUSTUP_SHA=ad1f8b5199b3b9e231472ed7aa08d2e5d1d539198a15c5b1e53c746aad81d27b
-
-ADD --chown=sqlcipher --chmod=755 --checksum=sha256:${RUSTUP_SHA} \
-    https://static.rust-lang.org/rustup/archive/1.21.1/x86_64-unknown-linux-gnu/rustup-init /tmp/rustup-init
-
-RUN /tmp/rustup-init -y --profile minimal --default-toolchain "$(cat rust-toolchain)" \
-    && rm -rf /tmp/rustup-init
-
-RUN rustup target add aarch64-unknown-linux-gnu
-
 # Node setup
 
 ARG NODE_VERSION
@@ -70,7 +57,5 @@ ENV PATH="/home/sqlcipher/node/bin:${PATH}"
 USER root
 RUN apt-get install -y g++ gcc crossbuild-essential-arm64 git python3 binutils
 USER sqlcipher
-
-RUN cargo install dump_syms --no-default-features --features cli
 
 CMD [ "/bin/bash" ]

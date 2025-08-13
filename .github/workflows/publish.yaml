@@ -25,11 +25,9 @@ jobs:
           - os: macos-latest
             target: arm64
             cross-target: x64
-            rust-cross-target: x86_64-apple-darwin
           - os: windows-latest
             target: x64
             cross-target: arm64
-            rust-cross-target: aarch64-pc-windows-msvc
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -59,10 +57,6 @@ jobs:
       - name: Install node_modules
         run: pnpm install --frozen-lockfile
 
-      - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target ${{ matrix.rust-cross-target }}
-
-      - name: Install dump_syms
-        run: cargo install dump_syms --no-default-features --features cli
 
       - name: Prebuild ${{ matrix.target }}
         run: |

@@ -53,8 +53,6 @@
         'SQLITE_ENABLE_JSON1',
         'SQLITE_INTROSPECTION_PRAGMAS',
 
-        'SQLCIPHER_CRYPTO_CUSTOM=signal_crypto_provider_setup',
-
         'HAVE_STDINT_H=1',
         'HAVE_INT8_T=1',
         'HAVE_INT16_T=1',
@@ -73,29 +71,10 @@
         'SQLITE_EXTRA_SHUTDOWN=sqlcipher_extra_shutdown',
       ],
       'conditions': [
-        # Link with extension
         ['OS == "win"', {
           'defines': [
             'WIN32'
-          ],
-          'link_settings': {
-            'libraries': [
-              '-luserenv.lib',
-              '-lntdll.lib',
-              '-lbcrypt.lib',
-              '-lcrypt32.lib',
-              '-lsignal_sqlcipher_extension.lib'
-            ],
-            'library_dirs': [
-              '<(PRODUCT_DIR)',
-            ]
-          }
-        }, {
-          'link_settings': {
-            'libraries': [
-              '<(SHARED_INTERMEDIATE_DIR)/libsignal_sqlcipher_extension.a',
-            ]
-          },
+          ]
         }],
 
         # Profiling

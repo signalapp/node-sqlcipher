@@ -5,7 +5,6 @@
       'target_name': 'node_sqlcipher',
       'dependencies': [
         'deps/sqlcipher/sqlcipher.gyp:sqlcipher',
-        'deps/extension/extension.gyp:extension',
         "<!(node -p \"require('node-addon-api').targets\"):node_addon_api",
       ],
       'sources': ['src/addon.cc'],
