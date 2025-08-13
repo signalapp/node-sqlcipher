@@ -74,6 +74,48 @@ static Napi::Value SignalTokenize(const Napi::CallbackInfo& info) {
   return result;
 }
 
+// Global Settings
+
+thread_local Napi::Reference<Napi::Function> logger_fn_;
+
+static void LoggerWrapper(void* _ctx, int code, const char* msg) {
+  if (logger_fn_.IsEmpty()) {
+    return;
+  }
+
+  auto env = logger_fn_.Env();
+  Napi::HandleScope scope(env);
+
+#define CODE_STR(NAME) \
+  case NAME:           \
+    code_name = #NAME; \
+    break;
+
+  const char* code_name;
+  switch (code) {
+    SQLITE_ERROR_ENUM(CODE_STR)
+    default:
+      code_name = "unknown";
+      break;
+  }
+
+#undef CODE_STR
+
+  logger_fn_.Value().Call({
+      Napi::String::New(env, code_name),
+      Napi::String::New(env, msg),
+  });
+}
+
+static void SetLogger(const Napi::CallbackInfo& info) {
+  auto callback = info[0].As<Napi::Function>();
+  assert(callback.IsFunction());
+
+  logger_fn_.Reset(callback, 1);
+
+  sqlite3_config(SQLITE_CONFIG_LOG, LoggerWrapper);
+}
+
 // Utils
 
 Napi::Error FormatError(Napi::Env env, const char* format, ...) {
@@ -856,6 +898,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
 
   Database::Init(env, exports);
   Statement::Init(env, exports);
+  exports["setLogger"] = Napi::Function::New(env, &SetLogger);
   exports["signalTokenize"] = Napi::Function::New(env, &SignalTokenize);
   return exports;
 }
