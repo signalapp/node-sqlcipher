@@ -29,6 +29,12 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^3.0.8
         version: 3.0.8(vitest@3.0.8(@types/node@22.13.9)(yaml@2.7.0))
+      cmake-bare:
+        specifier: ^1.6.5
+        version: 1.6.5
+      cmake-npm:
+        specifier: ^1.1.0
+        version: 1.1.0
       esbuild:
         specifier: ^0.25.0
         version: 0.25.0
@@ -687,6 +693,12 @@ packages:
   chownr@3.0.0:
     resolution: {integrity: sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==}
     engines: {node: '>=18'}
+
+  cmake-bare@1.6.5:
+    resolution: {integrity: sha512-b5JD9/XCpqnj4b26yLop/os7EoL323E9hhtctgZYZ/PBN7Kud9BbtsIzha2Eclqug1zg5URAuCFBbj3bNZgGmQ==}
+
+  cmake-npm@1.1.0:
+    resolution: {integrity: sha512-+mM1ykb4k0bSR5afW0LcVLEf1rd00o95m8PeotnCfXcsnEQ++TKrf86noO4G9uLGrvgKi9kD1BJvaZyN4G8CDw==}
 
   color-convert@1.9.3:
     resolution: {integrity: sha512-QfAUtd+vFdAtFQcC8CCyYt1fYWxSqAiK2cSD6zDB8N3cpsEBAvRxp9zOGg6G/SHHJYAT88/az/IuDGALsNVbGg==}
@@ -2571,6 +2583,12 @@ snapshots:
   chownr@1.1.4: {}
 
   chownr@3.0.0: {}
+
+  cmake-bare@1.6.5:
+    dependencies:
+      cmake-npm: 1.1.0
+
+  cmake-npm@1.1.0: {}
 
   color-convert@1.9.3:
     dependencies:
