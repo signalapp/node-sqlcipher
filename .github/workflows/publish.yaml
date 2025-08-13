@@ -158,7 +158,8 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - run: pnpm test
+      - name: Production Tests
+        run: pnpm test
         env:
           PREBUILDS_ONLY: 1
 
@@ -197,7 +198,8 @@ jobs:
           path: prebuilds
           merge-multiple: true
 
-      - run: pnpm test (profiling)
+      - name: Profiling build tests
+        run: pnpm test
         env:
           PREBUILDS_ONLY: 1
 
