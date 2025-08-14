@@ -409,7 +409,6 @@ test('extended error codes', () => {
   );
 });
 
-
 test('does not cache statements', () => {
   expect(db.prepare('SELECT 1')).not.toBe(db.prepare('SELECT 1'));
 });

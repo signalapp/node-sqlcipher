@@ -3,9 +3,7 @@
 
 import assert from 'node:assert';
 import { runInThisContext } from 'node:vm';
-import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
-import bindings from 'node-gyp-build';
+import binding from './binding.js';
 
 /** @internal */
 type NativeDatabase = Readonly<{ __native_db: never }>;
@@ -13,14 +11,7 @@ type NativeDatabase = Readonly<{ __native_db: never }>;
 /** @internal */
 type NativeStatement = Readonly<{ __native_stmt: never }>;
 
-// esbuild is configured to replace:
-// - `import.meta.url` => `undefined` for CJS
-// - `__dirname` => `undefined` for ESM
-const ROOT_DIR = import.meta.url
-  ? fileURLToPath(new URL('..', import.meta.url))
-  : join(__dirname, '..');
-
-const addon = bindings<{
+const addon = binding as Readonly<{
   statementNew(
     db: NativeDatabase,
     query: string,
@@ -45,8 +36,7 @@ const addon = bindings<{
   databaseOpen(path: string): NativeDatabase;
   databaseExec(db: NativeDatabase, query: string): void;
   databaseClose(db: NativeDatabase): void;
-
-}>(ROOT_DIR);
+}>;
 
 export type RunResult = {
   /** Total number of affected rows */
@@ -378,7 +368,6 @@ export default class Database {
     this.#isCacheEnabled = cacheStatements === true;
   }
 
-
   /**
    * Execute one or multiple SQL statements in a given `sql` string.
    *
@@ -561,7 +550,6 @@ export default class Database {
       }
     };
   }
-
 }
 
 export { Database };

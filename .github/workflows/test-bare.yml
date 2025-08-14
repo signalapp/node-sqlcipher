@@ -1,0 +1,46 @@
+name: Test (Bare)
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  test:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+          - os: macos-latest
+            platform: darwin
+            arch: arm64
+          - os: windows-latest
+            platform: win32
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.platform }}-${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.3.0
+      - run: npm install -g bare-runtime bare-make
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate build files (debug)
+        run: bare-make generate --platform ${{ matrix.platform }} --arch ${{ matrix.arch }} --debug
+      - name: Build
+        run: bare-make build
+      - name: Install prebuilds
+        run: bare-make install
+      - name: Build TypeScript
+        run: pnpm build
+      - name: Run tests
+        run: pnpm test
