@@ -10,6 +10,7 @@ use core::ffi::{c_char, c_int, c_uchar, c_void};
 use hmac::{Hmac, Mac};
 use pbkdf2::pbkdf2_hmac;
 use rand_core::{OsRng, RngCore};
+use sha1::Sha1;
 use sha2::Sha512;
 
 pub use signal_tokenizer;
@@ -70,6 +71,7 @@ extern "C" fn random(_ctx: *mut c_void, buf: *mut c_void, length: c_int) -> c_in
 extern "C" fn get_hmac_sz(_ctx: *mut c_void, algorithm: c_int) -> c_int {
     match algorithm {
         SQLCIPHER_HMAC_SHA512 => 64,
+        SQLCIPHER_HMAC_SHA1 => 20,
         _ => 0,
     }
 }
@@ -85,9 +87,6 @@ extern "C" fn hmac(
     in2_sz: c_int,
     out: *mut c_uchar,
 ) -> c_int {
-    if algorithm != SQLCIPHER_HMAC_SHA512 {
-        return SQLITE_ERROR;
-    }
     if hmac_key.is_null() || in1.is_null() || out.is_null() {
         return SQLITE_ERROR;
     }
@@ -99,16 +98,34 @@ extern "C" fn hmac(
         Some(unsafe { core::slice::from_raw_parts(in2 as *mut c_uchar, in2_sz as usize) })
     };
 
-    let Ok(mut mac) = Hmac::<Sha512>::new_from_slice(key) else {
-        return SQLITE_ERROR;
-    };
-    mac.update(in1);
-    if let Some(in2) = in2 {
-        mac.update(in2);
-    }
-    let digest = mac.finalize().into_bytes();
-    unsafe {
-        out.copy_from(digest.as_ptr(), digest.len());
+    match algorithm {
+        SQLCIPHER_HMAC_SHA512 => {
+            let Ok(mut mac) = Hmac::<Sha512>::new_from_slice(key) else {
+                return SQLITE_ERROR;
+            };
+            mac.update(in1);
+            if let Some(in2) = in2 {
+                mac.update(in2);
+            }
+            let digest = mac.finalize().into_bytes();
+            unsafe {
+                out.copy_from(digest.as_ptr(), digest.len());
+            };
+        }
+        SQLCIPHER_HMAC_SHA1 => {
+            let Ok(mut mac) = Hmac::<Sha1>::new_from_slice(key) else {
+                return SQLITE_ERROR;
+            };
+            mac.update(in1);
+            if let Some(in2) = in2 {
+                mac.update(in2);
+            }
+            let digest = mac.finalize().into_bytes();
+            unsafe {
+                out.copy_from(digest.as_ptr(), digest.len());
+            };
+        }
+        _ => return SQLITE_ERROR,
     };
     SQLITE_OK
 }
@@ -124,16 +141,21 @@ extern "C" fn pbkdf(
     key_sz: c_int,
     key: *mut c_uchar,
 ) -> c_int {
-    if algorithm != SQLCIPHER_PBKDF2_HMAC_SHA512 {
-        return SQLITE_ERROR;
-    }
     if pass.is_null() || salt.is_null() || key.is_null() {
         return SQLITE_ERROR;
     }
     let password = unsafe { core::slice::from_raw_parts(pass as *const c_uchar, pass_sz as usize) };
     let salt = unsafe { core::slice::from_raw_parts(salt as *const c_uchar, salt_sz as usize) };
     let buf = unsafe { core::slice::from_raw_parts_mut(key as *mut c_uchar, key_sz as usize) };
-    pbkdf2_hmac::<Sha512>(password, salt, workfactor as u32, buf);
+    match algorithm {
+        SQLCIPHER_PBKDF2_HMAC_SHA512 => {
+            pbkdf2_hmac::<Sha512>(password, salt, workfactor as u32, buf);
+        }
+        SQLCIPHER_PBKDF2_HMAC_SHA1 => {
+            pbkdf2_hmac::<Sha1>(password, salt, workfactor as u32, buf);
+        }
+        _ => return SQLITE_ERROR,
+    };
     SQLITE_OK
 }
 

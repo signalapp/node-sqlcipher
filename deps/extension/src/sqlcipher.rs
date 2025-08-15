@@ -10,6 +10,10 @@ use core::ffi::{c_char, c_int, c_uchar, c_void};
 pub const SQLCIPHER_HMAC_SHA512: c_int = 2;
 pub const SQLCIPHER_PBKDF2_HMAC_SHA512: c_int = 2;
 
+// Legacy encryption primitives
+pub const SQLCIPHER_HMAC_SHA1: c_int = 0;
+pub const SQLCIPHER_PBKDF2_HMAC_SHA1: c_int = 0;
+
 pub const CIPHER_ENCRYPT: c_int = 1;
 
 #[repr(C)]
