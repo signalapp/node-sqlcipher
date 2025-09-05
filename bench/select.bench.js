@@ -1,7 +1,8 @@
 import { bench, describe } from 'vitest';
 
 import BDatabase from '@signalapp/better-sqlite3';
-import Database from '../lib/index.js';
+import { DatabaseSync as NDatabase } from 'node:sqlite';
+import Database from '../dist/index.mjs';
 
 const PREPARE = `
   CREATE TABLE t (
@@ -36,12 +37,15 @@ const SELECT = 'SELECT * FROM t LIMIT 1000';
 describe('SELECT * FROM t', () => {
   const sdb = new Database(':memory:', { cacheStatements: true });
   const bdb = new BDatabase(':memory:');
+  const ndb = new NDatabase(':memory:');
 
   sdb.exec(PREPARE);
   bdb.exec(PREPARE);
+  ndb.exec(PREPARE);
 
   const sinsert = sdb.prepare(INSERT);
   const binsert = bdb.prepare(INSERT);
+  const ninsert = ndb.prepare(INSERT);
 
   sdb.transaction(() => {
     for (const value of VALUES) {
@@ -55,6 +59,12 @@ describe('SELECT * FROM t', () => {
     }
   })();
 
+  ndb.exec('BEGIN');
+  for (const value of VALUES) {
+    ninsert.run(value);
+  }
+  ndb.exec('COMMIT');
+
   const sselect = sdb.prepare(SELECT);
   const bselect = bdb.prepare(SELECT);
 
@@ -64,5 +74,11 @@ describe('SELECT * FROM t', () => {
 
   bench('@signalapp/better-sqlite', () => {
     bselect.all();
+  });
+
+  bench('node:sqlite', () => {
+    // Node.js seems to finalize the statement after `.all()`
+    const nselect = ndb.prepare(SELECT);
+    nselect.all();
   });
 });

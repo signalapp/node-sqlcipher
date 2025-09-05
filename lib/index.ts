@@ -27,15 +27,16 @@ const addon = bindings<{
     persistent: boolean,
     pluck: boolean,
     bigint: boolean,
+    paramNames: Array<string | null>,
   ): NativeStatement;
   statementRun<Options extends StatementOptions>(
     stmt: NativeStatement,
-    params: StatementParameters<Options> | undefined,
+    params: NativeParameters<Options> | undefined,
     result: [number, number],
   ): void;
   statementStep<Options extends StatementOptions>(
     stmt: NativeStatement,
-    params: StatementParameters<Options> | null | undefined,
+    params: NativeParameters<Options> | null | undefined,
     cache: Array<SqliteValue<Options>> | undefined,
     isGet: boolean,
   ): Array<SqliteValue<Options>>;
@@ -85,11 +86,15 @@ export type StatementOptions = Readonly<{
   bigint?: true;
 }>;
 
+export type NativeParameters<Options extends StatementOptions> = ReadonlyArray<
+  SqliteValue<Options>
+>;
+
 /**
  * Parameters accepted by `.run()`/`.get()`/`.all()` methods of the statement.
  */
 export type StatementParameters<Options extends StatementOptions> =
-  | ReadonlyArray<SqliteValue<Options>>
+  | NativeParameters<Options>
   | Readonly<Record<string, SqliteValue<Options>>>;
 
 /**
@@ -119,6 +124,9 @@ class Statement<Options extends StatementOptions = object> {
 
   #cache: Array<SqliteValue<Options>> | undefined;
   #createRow: undefined | ((result: unknown) => RowType<Options>);
+  #translateParams: (
+    params: StatementParameters<Options>,
+  ) => NativeParameters<Options>;
   #native: NativeStatement | undefined;
   #onClose: (() => void) | undefined;
 
@@ -131,13 +139,46 @@ class Statement<Options extends StatementOptions = object> {
   ) {
     this.#needsTranslation = persistent === true && !pluck;
 
+    const paramNames = new Array<string | null>();
+
     this.#native = addon.statementNew(
       db,
       query,
       persistent === true,
       pluck === true,
       bigint === true,
+      paramNames,
     );
+
+    const isArrayParams = paramNames.every((name) => name === null);
+    const isObjectParams =
+      !isArrayParams && paramNames.every((name) => typeof name === 'string');
+
+    if (!isArrayParams && !isObjectParams) {
+      throw new TypeError('Cannot mix named and anonymous params in query');
+    }
+
+    if (isArrayParams) {
+      this.#translateParams = (params) => {
+        if (!Array.isArray(params)) {
+          throw new TypeError('Query requires an array of anonymous params');
+        }
+        return params;
+      };
+    } else {
+      this.#translateParams = runInThisContext(`
+        (function translateParams(params) {
+          if (Array.isArray(params)) {
+            throw new TypeError('Query requires an object of named params');
+          }
+          return [
+            ${paramNames
+              .map((name) => `params[${JSON.stringify(name)}]`)
+              .join(',\n')}
+          ];
+        })
+      `);
+    }
 
     this.#onClose = onClose;
   }
@@ -154,8 +195,8 @@ class Statement<Options extends StatementOptions = object> {
       throw new Error('Statement closed');
     }
     const result: [number, number] = [0, 0];
-    this.#checkParams(params);
-    addon.statementRun(this.#native, params, result);
+    const nativeParams = this.#checkParams(params);
+    addon.statementRun(this.#native, nativeParams, result);
     return { changes: result[0], lastInsertRowid: result[1] };
   }
 
@@ -174,8 +215,13 @@ class Statement<Options extends StatementOptions = object> {
     if (this.#native === undefined) {
       throw new Error('Statement closed');
     }
-    this.#checkParams(params);
-    const result = addon.statementStep(this.#native, params, this.#cache, true);
+    const nativeParams = this.#checkParams(params);
+    const result = addon.statementStep(
+      this.#native,
+      nativeParams,
+      this.#cache,
+      true,
+    );
     if (result === undefined) {
       return undefined;
     }
@@ -202,9 +248,8 @@ class Statement<Options extends StatementOptions = object> {
       throw new Error('Statement closed');
     }
     const result = [];
-    this.#checkParams(params);
-    let singleUseParams: StatementParameters<Options> | undefined | null =
-      params;
+    const nativeParams = this.#checkParams(params);
+    let singleUseParams: typeof nativeParams | undefined | null = nativeParams;
     while (true) {
       const single = addon.statementStep(
         this.#native,
@@ -282,9 +327,11 @@ class Statement<Options extends StatementOptions = object> {
   }
 
   /** @internal */
-  #checkParams(params: StatementParameters<Options> | undefined): void {
+  #checkParams(
+    params: StatementParameters<Options> | undefined,
+  ): NativeParameters<Options> | undefined {
     if (params === undefined) {
-      return;
+      return undefined;
     }
     if (typeof params !== 'object') {
       throw new TypeError('Params must be either object or array');
@@ -292,6 +339,7 @@ class Statement<Options extends StatementOptions = object> {
     if (params === null) {
       throw new TypeError('Params cannot be null');
     }
+    return this.#translateParams(params);
   }
 }
 

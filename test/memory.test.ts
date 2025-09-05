@@ -212,12 +212,16 @@ describe('list parameters', () => {
 
   test('object parameters', () => {
     const stmt = db.prepare('SELECT * FROM t WHERE a > ?');
-    expect(() => stmt.get({})).toThrowError('Unexpected anonymous param at 1');
+    expect(() => stmt.get({})).toThrowError(
+      'Query requires an array of anonymous params',
+    );
   });
 
   test('against named parameters', () => {
     const stmt = db.prepare('SELECT * FROM t WHERE a > $a');
-    expect(() => stmt.get([2])).toThrowError('Unexpected named param $a at 1');
+    expect(() => stmt.get([2])).toThrowError(
+      'Query requires an object of named params',
+    );
   });
 });
 
@@ -238,13 +242,6 @@ describe('object parameters', () => {
   test('absent parameters', () => {
     const stmt = db.prepare('SELECT * FROM t WHERE a > $a');
     expect(() => stmt.get()).toThrowError('Expected 1 parameters, got 0');
-  });
-
-  test('against anonymous parameters', () => {
-    const stmt = db.prepare('SELECT * FROM t WHERE a > ?');
-    expect(() => stmt.get({ a: 1 })).toThrowError(
-      'Unexpected anonymous param at 1',
-    );
   });
 });
 
