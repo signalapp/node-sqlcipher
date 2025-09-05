@@ -406,12 +406,14 @@ Napi::Value Statement::New(const Napi::CallbackInfo& info) {
   auto is_persistent = info[2].As<Napi::Boolean>();
   auto is_pluck = info[3].As<Napi::Boolean>();
   auto is_bigint = info[4].As<Napi::Boolean>();
+  auto param_names = info[5].As<Napi::Array>();
 
   assert(db_external.IsExternal());
   assert(query.IsString());
   assert(is_persistent.IsBoolean());
   assert(is_pluck.IsBoolean());
   assert(is_bigint.IsBoolean());
+  assert(param_names.IsArray());
 
   auto db = db_external.Data();
 
@@ -439,6 +441,18 @@ Napi::Value Statement::New(const Napi::CallbackInfo& info) {
 
   auto stmt = new Statement(db, db_external, handle, is_persistent, is_pluck,
                             is_bigint);
+
+  int key_count = sqlite3_bind_parameter_count(handle);
+
+  for (int i = 1; i <= key_count; i++) {
+    auto name = sqlite3_bind_parameter_name(handle, i);
+    if (name == nullptr) {
+      param_names[i - 1] = env.Null();
+    } else {
+      // Skip "$"
+      param_names[i - 1] = name + 1;
+    }
+  }
 
   return Napi::External<Statement>::New(
       env, stmt, [](Napi::Env env, Statement* stmt) { delete stmt; });
@@ -733,36 +747,18 @@ bool Statement::BindParams(Napi::Env env, Napi::Value params) {
 
     for (int i = 1; i <= list_len; i++) {
       auto name = sqlite3_bind_parameter_name(handle_, i);
-      if (name != nullptr) {
-        NAPI_THROW(FormatError(env, "Unexpected named param %s at %d", name, i),
-                   false);
-      }
 
       auto error = BindParam(env, i, list[i - 1]);
       if (error != nullptr) {
-        NAPI_THROW(
-            FormatError(env, "Failed to bind param %d, error %s", i, error),
-            false);
-      }
-    }
-  } else {
-    auto obj = params.As<Napi::Object>();
-
-    for (int i = 1; i <= key_count; i++) {
-      auto name = sqlite3_bind_parameter_name(handle_, i);
-      if (name == nullptr) {
-        NAPI_THROW(FormatError(env, "Unexpected anonymous param at %d", i),
-                   false);
-      }
-
-      // Skip "$"
-      name = name + 1;
-      auto value = obj[name];
-      auto error = BindParam(env, i, value);
-      if (error != nullptr) {
-        NAPI_THROW(
-            FormatError(env, "Failed to bind param %s, error %s", name, error),
-            false);
+        if (name == nullptr) {
+          NAPI_THROW(
+              FormatError(env, "Failed to bind param %d, error %s", i, error),
+              false);
+        } else {
+          NAPI_THROW(FormatError(env, "Failed to bind param %s, error %s",
+                                 name + 1, error),
+                     false);
+        }
       }
     }
   }
