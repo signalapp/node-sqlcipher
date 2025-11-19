@@ -21,6 +21,8 @@
       'xcode_settings': {
         'OTHER_CFLAGS': ['-std=c99'],
         'WARNING_CFLAGS': ['-w'],
+        'DEAD_CODE_STRIPPING': 'YES',
+        'LLVM_LTO': 'YES',
       },
       'defines': [
         'SQLITE_LIKE_DOESNT_MATCH_BLOBS',
@@ -97,6 +99,15 @@
             ]
           },
         }],
+
+        # LTO on Linux
+        'conditions': [
+          ['OS == "linux"', {
+            # GCC only for now
+            'cflags': ['-flto=4', '-fuse-linker-plugin', '-ffat-lto-objects'],
+            'ldflags': ['-flto=4', '-fuse-linker-plugin', '-ffat-lto-objects'],
+          }],
+        ],
 
         # Profiling
         ["\"-profiling.\" in \"<!(node -p \"require('../../package.json').version\")\"", {
