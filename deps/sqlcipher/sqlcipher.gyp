@@ -101,13 +101,11 @@
         }],
 
         # LTO on Linux
-        'conditions': [
-          ['OS == "linux"', {
-            # GCC only for now
-            'cflags': ['-flto=4', '-fuse-linker-plugin', '-ffat-lto-objects'],
-            'ldflags': ['-flto=4', '-fuse-linker-plugin', '-ffat-lto-objects'],
-          }],
-        ],
+        ['OS == "linux"', {
+          # GCC only for now
+          'cflags': ['-flto=4', '-fuse-linker-plugin', '-ffat-lto-objects'],
+          'ldflags': ['-flto=4', '-fuse-linker-plugin', '-ffat-lto-objects'],
+        }],
 
         # Profiling
         ["\"-profiling.\" in \"<!(node -p \"require('../../package.json').version\")\"", {
