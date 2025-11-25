@@ -101,10 +101,15 @@ static void LoggerWrapper(void* _ctx, int code, const char* msg) {
 
 #undef CODE_STR
 
-  logger_fn_.Value().Call({
+  auto result = logger_fn_.Value().Call({
       Napi::String::New(env, code_name),
       Napi::String::New(env, msg),
   });
+
+  // Ignore exceptions
+  if (result.IsEmpty()) {
+    env.GetAndClearPendingException();
+  }
 }
 
 static void SetLogger(const Napi::CallbackInfo& info) {
