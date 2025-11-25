@@ -144,6 +144,9 @@ jobs:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org/'
 
+      - name: Update npm
+        run: npm install -g npm@latest
+
       - name: Download built production libraries
         uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.19.1
         with:
