@@ -119,6 +119,8 @@ jobs:
     name: Publish
 
     permissions:
+      # Required for OIDC
+      id-token: 'write'
       # Needed for ncipollo/release-action.
       contents: 'write'
 
@@ -165,8 +167,6 @@ jobs:
 
       - name: Publish production
         run: pnpm publish --tag '${{ github.event.inputs.npm_tag }}' --access public --no-git-checks ${{ inputs.dry_run && '--dry-run' || ''}}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Rename symbols
         run: |
@@ -205,5 +205,3 @@ jobs:
 
       - name: Publish profiling
         run: pnpm publish --tag 'profiling' --access public --no-git-checks ${{ inputs.dry_run && '--dry-run' || ''}}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
