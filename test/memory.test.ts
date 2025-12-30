@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, afterEach } from 'vitest';
+import { describe, expect, test, beforeEach, afterEach, vi } from 'vitest';
 
 import Database, { setLogger } from '../lib/index.js';
 
@@ -495,5 +495,53 @@ describe('statement cache', () => {
     expect(cachedDb.prepare('SELECT 1', { persistent: false })).not.toBe(
       cachedDb.prepare('SELECT 1', { persistent: false }),
     );
+  });
+});
+
+describe('custom function', () => {
+  let fnDb: Database;
+  let fn: ReturnType<typeof vi.fn>;
+  let bigFn: ReturnType<typeof vi.fn>;
+  beforeEach(() => {
+    fnDb = new Database(':memory:');
+
+    fn = vi.fn();
+    fnDb.createFunction('fn', fn);
+
+    bigFn = vi.fn();
+    fnDb.createFunction('bigFn', bigFn, {
+      bigint: true,
+    });
+  });
+
+  afterEach(() => {
+    fnDb.close();
+  });
+
+  test('it calls the function without args', () => {
+    fnDb.exec(`SELECT fn()`);
+    expect(fn).toHaveBeenCalledWith();
+  });
+
+  test('it calls the function with multiple args', () => {
+    fnDb.exec(`SELECT fn(1, '123', NULL)`);
+    expect(fn).toHaveBeenCalledWith(1, '123', null);
+  });
+
+  test('it calls the function with blob', () => {
+    fnDb.exec(`SELECT fn(x'abba')`);
+    expect(fn).toHaveBeenCalledWith(Buffer.from('abba', 'hex'));
+  });
+
+  test('it uses bigints when configured', () => {
+    fnDb.exec(`SELECT bigFn(123456)`);
+    expect(bigFn).toHaveBeenCalledWith(123456n);
+  });
+
+  test('it throws when function returns a value', () => {
+    fnDb.createFunction('intFn', () => {
+      return 1;
+    });
+    expect(() => fnDb.exec(`SELECT intFn()`)).toThrowError('SQLITE_ERROR');
   });
 });

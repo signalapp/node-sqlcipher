@@ -30,6 +30,7 @@ class Database {
   static Napi::Value InitTokenizer(const Napi::CallbackInfo& info);
   static Napi::Value Close(const Napi::CallbackInfo& info);
   static Napi::Value Exec(const Napi::CallbackInfo& info);
+  static Napi::Value CreateFunction(const Napi::CallbackInfo& info);
 
   fts5_api* GetFTS5API(Napi::Env env);
 

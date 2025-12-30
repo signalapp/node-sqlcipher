@@ -74,6 +74,90 @@ static Napi::Value SignalTokenize(const Napi::CallbackInfo& info) {
   return result;
 }
 
+// Functions
+
+class FunctionWrap {
+ public:
+  FunctionWrap(Napi::Function fn, bool is_bigint) : is_bigint_(is_bigint) {
+    fn_.Reset(fn, 1);
+  }
+
+  static void Run(sqlite3_context* ctx, int argc, sqlite3_value** argv) {
+    auto wrap = static_cast<FunctionWrap*>(sqlite3_user_data(ctx));
+
+    wrap->Call(ctx, argc, argv);
+  }
+
+  static void Final(void* p_app) { delete static_cast<FunctionWrap*>(p_app); }
+
+ protected:
+  void Call(sqlite3_context* ctx, int argc, sqlite3_value** argv) {
+    auto env = fn_.Env();
+    Napi::HandleScope scope(env);
+
+    assert(argc >= 0);
+
+    auto args = std::vector<Napi::Value>(static_cast<size_t>(argc));
+
+    for (int i = 0; i < argc; i++) {
+      args[i] = TranslateValue(argv[i]);
+    }
+
+    auto result = fn_.Value().Call(args);
+
+    // Ignore exceptions
+    if (result.IsEmpty()) {
+      auto e = env.GetAndClearPendingException();
+      sqlite3_result_error(ctx, e.Message().c_str(), SQLITE_ERROR);
+    } else if (result.IsUndefined()) {
+      sqlite3_result_null(ctx);
+    } else {
+      sqlite3_result_error(ctx, "Function must not return a value",
+                           SQLITE_ERROR);
+    }
+  }
+
+  Napi::Value TranslateValue(sqlite3_value* value) {
+    auto env = fn_.Env();
+    int type = sqlite3_value_type(value);
+    switch (type) {
+      case SQLITE_INTEGER: {
+        auto val = sqlite3_value_int64(value);
+        if (is_bigint_) {
+          return Napi::BigInt::New(env, static_cast<int64_t>(val));
+        }
+        if (static_cast<int64_t>(INT32_MIN) <= val &&
+            val <= static_cast<int64_t>(INT32_MAX)) {
+          napi_value n_value;
+          NAPI_THROW_IF_FAILED(
+              env, napi_create_int32(env, static_cast<int32_t>(val), &n_value),
+              Napi::Value());
+          return Napi::Value(env, n_value);
+        } else {
+          return Napi::Number::New(env, val);
+        }
+      }
+      case SQLITE_TEXT:
+        return Napi::String::New(
+            env, reinterpret_cast<const char*>(sqlite3_value_text(value)),
+            sqlite3_value_bytes(value));
+      case SQLITE_FLOAT:
+        return Napi::Number::New(env, sqlite3_value_double(value));
+      case SQLITE_BLOB:
+        return Napi::Buffer<uint8_t>::Copy(
+            env, reinterpret_cast<const uint8_t*>(sqlite3_value_blob(value)),
+            sqlite3_value_bytes(value));
+      case SQLITE_NULL:
+        return env.Null();
+    }
+    return Napi::Value();
+  }
+
+ private:
+  Napi::Reference<Napi::Function> fn_;
+  bool is_bigint_;
+};
+
 // Global Settings
 
 thread_local Napi::Reference<Napi::Function> logger_fn_;
@@ -150,6 +234,8 @@ Napi::Object Database::Init(Napi::Env env, Napi::Object exports) {
       Napi::Function::New(env, &Database::InitTokenizer);
   exports["databaseClose"] = Napi::Function::New(env, &Database::Close);
   exports["databaseExec"] = Napi::Function::New(env, &Database::Exec);
+  exports["databaseCreateFunction"] =
+      Napi::Function::New(env, &Database::CreateFunction);
   return exports;
 }
 
@@ -284,6 +370,42 @@ Napi::Value Database::Exec(const Napi::CallbackInfo& info) {
   int r =
       sqlite3_exec(db->handle_, query_utf8.c_str(), nullptr, nullptr, nullptr);
   if (r != SQLITE_OK) {
+    return db->ThrowSqliteError(env, r);
+  }
+  return Napi::Value();
+}
+
+Napi::Value Database::CreateFunction(const Napi::CallbackInfo& info) {
+  auto env = info.Env();
+
+  auto db = FromExternal(info[0]);
+  auto name = info[1].As<Napi::String>();
+  auto fn = info[2].As<Napi::Function>();
+  auto is_bigint = info[3].As<Napi::Boolean>();
+
+  assert(name.IsString());
+  assert(fn.IsFunction());
+  assert(is_bigint.IsBoolean());
+
+  if (db == nullptr) {
+    return Napi::Value();
+  }
+
+  if (db->handle_ == nullptr) {
+    NAPI_THROW(Napi::Error::New(env, "Database closed"), Napi::Value());
+  }
+
+  auto name_utf8 = name.Utf8Value();
+
+  auto fn_wrap = new FunctionWrap(fn, is_bigint);
+
+  int r = sqlite3_create_function_v2(db->handle_, name_utf8.c_str(), -1,
+                                     SQLITE_UTF8,  // TODO(indutny): or UTF16?
+                                     fn_wrap, FunctionWrap::Run, nullptr,
+                                     nullptr, FunctionWrap::Final);
+
+  if (r != SQLITE_OK) {
+    delete fn_wrap;
     return db->ThrowSqliteError(env, r);
   }
   return Napi::Value();
