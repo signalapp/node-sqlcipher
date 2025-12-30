@@ -47,6 +47,12 @@ const addon = bindings<{
   databaseInitTokenizer(db: NativeDatabase): void;
   databaseExec(db: NativeDatabase, query: string): void;
   databaseClose(db: NativeDatabase): void;
+  databaseCreateFunction(
+    db: NativeDatabase,
+    name: string,
+    fn: (...args: ReadonlyArray<unknown>) => void,
+    bigint: boolean,
+  ): void;
 
   signalTokenize(value: string): Array<string>;
 
@@ -115,6 +121,14 @@ export type RowType<Options extends StatementOptions> = Options extends {
 }
   ? SqliteValue<Options>
   : Record<string, SqliteValue<Options>>;
+
+export type FunctionOptions = Readonly<{
+  /**
+   * If `true` - all integers passed to the fucntion will be big
+   * integers instead of regular (floating-point) numbers.
+   */
+  bigint?: boolean;
+}>;
 
 /**
  * A compiled SQL statement class.
@@ -450,6 +464,35 @@ export default class Database {
       throw new TypeError('Invalid sql argument');
     }
     addon.databaseExec(this.#native, sql);
+  }
+
+  /**
+   * Create custom SQL function with a given `name`.
+   *
+   * @param name - name of the function
+   * @param fn - function implementation
+   * @param options - function options.
+   */
+  public createFunction(
+    name: string,
+    fn: (...args: ReadonlyArray<unknown>) => void,
+    options: FunctionOptions = {},
+  ): void {
+    if (this.#native === undefined) {
+      throw new Error('Database closed');
+    }
+    if (typeof name !== 'string') {
+      throw new TypeError('Invalid name argument');
+    }
+    if (typeof fn !== 'function') {
+      throw new TypeError('Invalid fn argument');
+    }
+    addon.databaseCreateFunction(
+      this.#native,
+      name,
+      fn,
+      options.bigint === true,
+    );
   }
 
   /**
