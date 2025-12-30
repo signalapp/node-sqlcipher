@@ -537,4 +537,11 @@ describe('custom function', () => {
     fnDb.exec(`SELECT bigFn(123456)`);
     expect(bigFn).toHaveBeenCalledWith(123456n);
   });
+
+  test('it throws when function returns a value', () => {
+    fnDb.createFunction('intFn', () => {
+      return 1;
+    });
+    expect(() => fnDb.exec(`SELECT intFn()`)).toThrowError('SQLITE_ERROR');
+  });
 });

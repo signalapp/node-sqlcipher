@@ -109,8 +109,11 @@ class FunctionWrap {
     if (result.IsEmpty()) {
       auto e = env.GetAndClearPendingException();
       sqlite3_result_error(ctx, e.Message().c_str(), SQLITE_ERROR);
-    } else {
+    } else if (result.IsUndefined()) {
       sqlite3_result_null(ctx);
+    } else {
+      sqlite3_result_error(ctx, "Function must not return a value",
+                           SQLITE_ERROR);
     }
   }
 
