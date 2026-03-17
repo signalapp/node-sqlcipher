@@ -108,7 +108,7 @@ export type StatementParameters<Options extends StatementOptions> =
  */
 export type SqliteValue<Options extends StatementOptions> =
   | string
-  | Uint8Array
+  | Uint8Array<ArrayBuffer>
   | number
   | null
   | (Options extends { bigint: true } ? bigint : never);
