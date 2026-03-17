@@ -1,6 +1,6 @@
 {
   "name": "@signalapp/sqlcipher",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "A fast N-API-based Node.js addon wrapping sqlcipher and FTS5 segmenting APIs",
   "homepage": "http://github.com/signalapp/node-sqlcipher.git",
   "license": "AGPL-3.0-only",
