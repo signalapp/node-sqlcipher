@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
-FROM ubuntu:focal-20240530@sha256:fa17826afb526a9fc7250e0fbcbfd18d03fe7a54849472f86879d8bf562c629e
+FROM ubuntu:jammy-20250714@sha256:1ec65b2719518e27d4d25f104d93f9fac60dc437f81452302406825c46fcc9cb
 
 # Avoid getting prompted to configure things during installation.
 ENV DEBIAN_FRONTEND=noninteractive
@@ -15,13 +15,15 @@ COPY docker/apt.conf docker/sources.list /etc/apt/
 # But we can't install it because it doesn't trust our mirror!
 # Temporarily disables APT's certificate signature checking
 # to download the certificates.
-RUN    apt-get update -oAcquire::https::Verify-Peer=false \
-    && apt-get install -oAcquire::https::Verify-Peer=false -y ca-certificates
+RUN apt update -oAcquire::https::Verify-Peer=false
+RUN apt install -oAcquire::https::Verify-Peer=false -y ca-certificates
+
 # Back to normal, verification back on
 
 # Install only what's needed to set up Rust and Node.
 # We'll install additional tools at the end to take advantage of Docker's caching of earlier steps.
-RUN apt-get update && apt-get install -y apt-transport-https xz-utils unzip
+RUN apt update
+RUN apt install -y apt-transport-https xz-utils unzip
 
 # User-specific setup!
 
