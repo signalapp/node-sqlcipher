@@ -162,9 +162,7 @@ class FunctionWrap {
 
 class WalHookWrap {
  public:
-  explicit WalHookWrap(Napi::Function fn) {
-    fn_.Reset(fn, 1);
-  }
+  explicit WalHookWrap(Napi::Function fn) { fn_.Reset(fn, 1); }
 
   static int Run(void* p_app, sqlite3* _db, const char* db_name, int n_pages) {
     auto wrap = static_cast<WalHookWrap*>(p_app);
