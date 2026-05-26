@@ -67,6 +67,9 @@ RUN tar -xf node.tar.xz \
 
 ENV PATH="/home/sqlcipher/node/bin:${PATH}"
 
+# Install pnpm
+RUN npm install -g pnpm@10.18.1
+
 # And finally any bonus packages we're going to need
 # Note that we jump back to root for this.
 USER root
