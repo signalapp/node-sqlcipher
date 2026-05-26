@@ -158,6 +158,38 @@ class FunctionWrap {
   bool is_bigint_;
 };
 
+// WAL Hook
+
+class WalHookWrap {
+ public:
+  explicit WalHookWrap(Napi::Function fn) { fn_.Reset(fn, 1); }
+
+  static int Run(void* p_app, sqlite3* _db, const char* db_name, int n_pages) {
+    auto wrap = static_cast<WalHookWrap*>(p_app);
+    wrap->Call(db_name, n_pages);
+    return SQLITE_OK;
+  }
+
+ protected:
+  void Call(const char* db_name, int n_pages) {
+    auto env = fn_.Env();
+    Napi::HandleScope scope(env);
+
+    auto result = fn_.Value().Call({
+        Napi::String::New(env, db_name),
+        Napi::Number::New(env, n_pages),
+    });
+
+    // Ignore exceptions
+    if (result.IsEmpty()) {
+      env.GetAndClearPendingException();
+    }
+  }
+
+ private:
+  Napi::Reference<Napi::Function> fn_;
+};
+
 // Global Settings
 
 thread_local Napi::Reference<Napi::Function> logger_fn_;
@@ -236,6 +268,8 @@ Napi::Object Database::Init(Napi::Env env, Napi::Object exports) {
   exports["databaseExec"] = Napi::Function::New(env, &Database::Exec);
   exports["databaseCreateFunction"] =
       Napi::Function::New(env, &Database::CreateFunction);
+  exports["databaseSetWalHook"] =
+      Napi::Function::New(env, &Database::SetWalHook);
   return exports;
 }
 
@@ -250,6 +284,9 @@ Database::~Database() {
   if (handle_ == nullptr) {
     return;
   }
+
+  delete wal_hook_wrap_;
+  wal_hook_wrap_ = nullptr;
 
   int r = sqlite3_close(handle_);
   if (r != SQLITE_OK) {
@@ -342,6 +379,9 @@ Napi::Value Database::Close(const Napi::CallbackInfo& info) {
   }
   db->statements_.clear();
 
+  delete db->wal_hook_wrap_;
+  db->wal_hook_wrap_ = nullptr;
+
   int r = sqlite3_close(db->handle_);
   if (r != SQLITE_OK) {
     return db->ThrowSqliteError(env, r);
@@ -408,6 +448,32 @@ Napi::Value Database::CreateFunction(const Napi::CallbackInfo& info) {
     delete fn_wrap;
     return db->ThrowSqliteError(env, r);
   }
+  return Napi::Value();
+}
+
+Napi::Value Database::SetWalHook(const Napi::CallbackInfo& info) {
+  auto env = info.Env();
+
+  auto db = FromExternal(info[0]);
+  auto fn = info[1].As<Napi::Function>();
+
+  assert(fn.IsFunction());
+
+  if (db == nullptr) {
+    return Napi::Value();
+  }
+
+  if (db->handle_ == nullptr) {
+    NAPI_THROW(Napi::Error::New(env, "Database closed"), Napi::Value());
+  }
+
+  auto wal_wrap = new WalHookWrap(fn);
+
+  delete db->wal_hook_wrap_;
+  db->wal_hook_wrap_ = wal_wrap;
+
+  sqlite3_wal_hook(db->handle_, WalHookWrap::Run, wal_wrap);
+
   return Napi::Value();
 }
 

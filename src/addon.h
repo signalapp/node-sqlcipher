@@ -9,6 +9,7 @@
 #include "sqlite3.h"
 
 class Statement;
+class WalHookWrap;
 
 class Database {
  public:
@@ -31,6 +32,7 @@ class Database {
   static Napi::Value Close(const Napi::CallbackInfo& info);
   static Napi::Value Exec(const Napi::CallbackInfo& info);
   static Napi::Value CreateFunction(const Napi::CallbackInfo& info);
+  static Napi::Value SetWalHook(const Napi::CallbackInfo& info);
 
   fts5_api* GetFTS5API(Napi::Env env);
 
@@ -45,6 +47,8 @@ class Database {
   // All currently open statements for this database. Used to close all open
   // statements when closing the database.
   std::list<Statement*> statements_;
+
+  WalHookWrap* wal_hook_wrap_ = nullptr;
 };
 
 class AutoResetStatement {

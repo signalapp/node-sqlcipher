@@ -53,6 +53,10 @@ const addon = bindings<{
     fn: (...args: ReadonlyArray<unknown>) => void,
     bigint: boolean,
   ): void;
+  databaseSetWalHook(
+    db: NativeDatabase,
+    fn: (dbName: string, pageCount: number) => void,
+  ): void;
 
   signalTokenize(value: string): Array<string>;
 
@@ -410,6 +414,13 @@ export type DatabaseOptions = Readonly<{
 }>;
 
 /**
+ * @param dbName - The name of the database that was written to.
+ * @param pageCount - The number of pages currently in the write-ahead log file,
+ *                    including those that were just committed.
+ */
+export type WalHook = (dbName: string, pageCount: number) => void;
+
+/**
  * A sqlite database class.
  */
 export default class Database {
@@ -493,6 +504,22 @@ export default class Database {
       fn,
       options.bigint === true,
     );
+  }
+
+  /**
+   * Register a callback to be invoked each time data is commited to a database
+   * in WAL mode.
+   *
+   * @param fn - function implementation
+   */
+  public setWalHook(fn: WalHook): void {
+    if (this.#native === undefined) {
+      throw new Error('Database closed');
+    }
+    if (typeof fn !== 'function') {
+      throw new TypeError('Invalid fn argument');
+    }
+    addon.databaseSetWalHook(this.#native, fn);
   }
 
   /**
