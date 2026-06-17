@@ -23,13 +23,20 @@ jobs:
         buildType: ['production', 'profiling']
         include:
           - os: macos-latest
+            platform: darwin
             target: arm64
             cross-target: x64
             rust-cross-target: x86_64-apple-darwin
           - os: windows-latest
+            platform: win32
             target: x64
             cross-target: arm64
             rust-cross-target: aarch64-pc-windows-msvc
+
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -67,8 +74,19 @@ jobs:
       - name: Prebuild ${{ matrix.target }}
         run: |
           pnpm prebuildify --target '${{ steps.get-nvm-version.outputs.node-version }}' --arch ${{ matrix.target }}
+
+      - name: Generate ${{ matrix.target }} attestation
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: prebuilds/${{ matrix.platform }}-${{ matrix.target }}/@signalapp+sqlcipher.node
+
       - name: Prebuild ${{ matrix.cross-target }}
         run: pnpm prebuildify --target '${{ steps.get-nvm-version.outputs.node-version }}' --arch ${{ matrix.cross-target }}
+
+      - name: Generate ${{ matrix.cross-target }} attestation
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: prebuilds/${{ matrix.platform }}-${{ matrix.cross-target }}/@signalapp+sqlcipher.node
 
       - name: Upload artifacts
         uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
@@ -79,6 +97,11 @@ jobs:
   prebuild_linux:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
 
     strategy:
       matrix:
@@ -108,6 +131,16 @@ jobs:
 
       - name: Build in docker container
         run: ./docker-prebuildify.sh
+
+      - name: Generate x64 attestation
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: prebuilds/linux-x64/@signalapp+sqlcipher.node
+
+      - name: Generate arm64 attestation
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: prebuilds/linux-arm64/@signalapp+sqlcipher.node
 
       - name: Upload artifacts
         uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
