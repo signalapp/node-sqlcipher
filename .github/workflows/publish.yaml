@@ -76,6 +76,7 @@ jobs:
           pnpm prebuildify --target '${{ steps.get-nvm-version.outputs.node-version }}' --arch ${{ matrix.target }}
 
       - name: Generate ${{ matrix.target }} attestation
+        if: ${{ matrix.buildType == 'production' }}
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
           subject-path: prebuilds/${{ matrix.platform }}-${{ matrix.target }}/@signalapp+sqlcipher.node
@@ -84,6 +85,7 @@ jobs:
         run: pnpm prebuildify --target '${{ steps.get-nvm-version.outputs.node-version }}' --arch ${{ matrix.cross-target }}
 
       - name: Generate ${{ matrix.cross-target }} attestation
+        if: ${{ matrix.buildType == 'production' }}
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
           subject-path: prebuilds/${{ matrix.platform }}-${{ matrix.cross-target }}/@signalapp+sqlcipher.node
