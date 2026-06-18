@@ -135,11 +135,13 @@ jobs:
         run: ./docker-prebuildify.sh
 
       - name: Generate x64 attestation
+        if: ${{ matrix.buildType == 'production' }}
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
           subject-path: prebuilds/linux-x64/@signalapp+sqlcipher.node
 
       - name: Generate arm64 attestation
+        if: ${{ matrix.buildType == 'production' }}
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
           subject-path: prebuilds/linux-arm64/@signalapp+sqlcipher.node
