@@ -204,22 +204,32 @@ jobs:
       - name: Publish production
         run: pnpm publish --tag '${{ github.event.inputs.npm_tag }}' --access public --no-git-checks ${{ inputs.dry_run && '--dry-run' || ''}}
 
-      - name: Rename symbols
+      - name: Prepare release artifacts
         run: |
-          mv prebuilds/darwin-arm64/node_sqlcipher.sym prebuilds/node_sqlcipher_darwin_arm64.sym
-          mv prebuilds/darwin-x64/node_sqlcipher.sym prebuilds/node_sqlcipher_darwin_x64.sym
-          mv prebuilds/linux-arm64/node_sqlcipher.sym prebuilds/node_sqlcipher_linux_arm64.sym
-          mv prebuilds/linux-x64/node_sqlcipher.sym prebuilds/node_sqlcipher_linux_x64.sym
-          mv prebuilds/win32-arm64/node_sqlcipher.sym prebuilds/node_sqlcipher_win32_arm64.sym
-          mv prebuilds/win32-x64/node_sqlcipher.sym prebuilds/node_sqlcipher_win32_x64.sym
+          mkdir artifacts
+          mv prebuilds/darwin-arm64/node_sqlcipher.sym artifacts/node_sqlcipher_darwin_arm64.sym
+          mv prebuilds/darwin-x64/node_sqlcipher.sym artifacts/node_sqlcipher_darwin_x64.sym
+          mv prebuilds/linux-arm64/node_sqlcipher.sym artifacts/node_sqlcipher_linux_arm64.sym
+          mv prebuilds/linux-x64/node_sqlcipher.sym artifacts/node_sqlcipher_linux_x64.sym
+          mv prebuilds/win32-arm64/node_sqlcipher.sym artifacts/node_sqlcipher_win32_arm64.sym
+          mv prebuilds/win32-x64/node_sqlcipher.sym artifacts/node_sqlcipher_win32_x64.sym
+          cp prebuilds/darwin-arm64/@signalapp+sqlcipher.node artifacts/node_sqlcipher_darwin_arm64.node
+          cp prebuilds/darwin-x64/@signalapp+sqlcipher.node artifacts/node_sqlcipher_darwin_x64.node
+          cp prebuilds/linux-arm64/@signalapp+sqlcipher.node artifacts/node_sqlcipher_linux_arm64.node
+          cp prebuilds/linux-x64/@signalapp+sqlcipher.node artifacts/node_sqlcipher_linux_x64.node
+          cp prebuilds/win32-arm64/@signalapp+sqlcipher.node artifacts/node_sqlcipher_win32_arm64.node
+          cp prebuilds/win32-x64/@signalapp+sqlcipher.node artifacts/node_sqlcipher_win32_x64.node
 
       # This step is expected to fail if not run on a tag.
       - name: Upload debug info to release
         uses: ncipollo/release-action@440c8c1cb0ed28b9f43e4d1d670870f059653174 # v1.16.0
         with:
           allowUpdates: true
+          immutableCreate: true
+          makeLatest: true
+          generateReleaseNotes: true
           artifactErrorsFailBuild: true
-          artifacts: prebuilds/node_sqlcipher_*.sym
+          artifacts: artifacts/*
 
       - name: Update package.json version to profiling
         run: pnpm version prerelease --no-git-tag-version --preid profiling
