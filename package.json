@@ -1,7 +1,7 @@
 {
   "packageManager": "pnpm@11.5.2",
   "name": "@signalapp/sqlcipher",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "description": "A fast N-API-based Node.js addon wrapping sqlcipher and FTS5 segmenting APIs",
   "homepage": "http://github.com/signalapp/node-sqlcipher.git",
   "license": "AGPL-3.0-only",
