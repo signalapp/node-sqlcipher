@@ -1,0 +1,5 @@
+patchedDependencies:
+  prebuildify: patches/prebuildify.patch
+allowBuilds:
+  '@signalapp/better-sqlite3': true
+  esbuild: true

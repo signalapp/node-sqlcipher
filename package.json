@@ -1,5 +1,5 @@
 {
-  "packageManager": "pnpm@10.18.1",
+  "packageManager": "pnpm@11.5.2",
   "name": "@signalapp/sqlcipher",
   "version": "4.0.1",
   "description": "A fast N-API-based Node.js addon wrapping sqlcipher and FTS5 segmenting APIs",
@@ -71,14 +71,5 @@
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.26.0",
     "vitest": "^3.0.8"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@signalapp/better-sqlite3",
-      "esbuild"
-    ],
-    "patchedDependencies": {
-      "prebuildify": "patches/prebuildify.patch"
-    }
   }
 }
