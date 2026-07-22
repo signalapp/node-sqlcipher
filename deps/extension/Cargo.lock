@@ -525,8 +525,8 @@ dependencies = [
 
 [[package]]
 name = "signal-tokenizer"
-version = "0.3.1"
-source = "git+https://github.com/signalapp/Signal-FTS5-Extension?rev=19e075dc320846f0cd06eb5dbb44f484a2781746#19e075dc320846f0cd06eb5dbb44f484a2781746"
+version = "0.3.2"
+source = "git+https://github.com/signalapp/Signal-FTS5-Extension?rev=02829a2f93595e35bc970433eeaf8654fbbf29d4#02829a2f93595e35bc970433eeaf8654fbbf29d4"
 dependencies = [
  "libc",
  "linkify",
